@@ -1,6 +1,9 @@
 from openlocationcode import openlocationcode as olc
 from enum import Enum
+import math
+import pysnooper
 
+@pysnooper.snoop()
 class TileSize(Enum):
     ''' An area of 20° x 20°. The side length of this tile varies with its location on the globe,
         but can be up to approximately 2200km. Tile addresses will be 2 characters long.'''
@@ -29,9 +32,11 @@ class TileSize(Enum):
         self.coordinate_increment = coordinate_increment
 
     def getCodeLength(self):
+        '''get 0th value'''
         return self.code_length
 
     def getCoordinateIncrement(self):
+        '''get 1th value'''
         return self.coordinate_increment
 
 # Copy from OpenLocationCode.java
@@ -106,7 +111,7 @@ def OpenGeoTile(code):
             raise Exception("Too precise, sort this later")
 
 
-    def constructTileFromCodeAndSize(self, code, tileSize)
+    def constructTileFromCodeAndSize(self, code, tileSize):
         '''
         Creates a new OpenGeoTile from an existing
         {@link com.google.openlocationcode.OpenLocationCode}.
@@ -139,7 +144,7 @@ def OpenGeoTile(code):
         self.code =  olc.encode(lat, long, tileSize.getCodeLength())
         self.tileSize = tileSize
 
-    def constructTileFromTileAddress(self, tileAddress)
+    def constructTileFromTileAddress(self, tileAddress):
         '''/**
          * Creates a new OpenGeoTile from a tile address.
          * @param tileAddress a tile address is a [2/4/6/8/10]-character string that corresponds to a
@@ -173,7 +178,7 @@ def OpenGeoTile(code):
             detectedTileSize = TileSize.PINPOINT
             olcBuilder += tileAddress[0:8] + SEPARATOR + tileAddress[8,10]
 
-        if detectedTileSize == None
+        if detectedTileSize == None:
             raise Exception("Invalid tile address")
 
         self.tileSize = detectedTileSize
@@ -226,3 +231,160 @@ def OpenGeoTile(code):
         */'''
         intermediate = OpenGeoTile(self.getTileAddress())
         return intermediate.getWrappedOpenLocationCode()
+    def getNeighbors(self):
+        '''/**
+        * Get an array of the typically 8  neighboring tiles of the same size.
+        * @return an array of the typically 8 neighboring tiles of the same size;
+        * may return less than 8 neighbors for tiles near the poles.
+        */'''
+        # deltas = [20.0, 1.0, 0.05, 0.0025, 0.000125]
+        delta = self.getTileSize().getCoordinateIncrement()
+
+        code_area = olc.decode(self.code)
+        latitude = code_area.latitudeCenter
+        longitude = code_area.longitudeCenter
+
+        lat_diff = [+1,+1,+1, 0,-1,-1,-1, 0]
+        long_diff = [-1, 0,+1,+1,+1, 0,-1,-1]
+
+        neighbors = []
+
+        for i in range(8):
+            ''' //OLC constructor clips and normalizes,
+                //so we don't have to deal with invalid lat/long values directly'''
+            neighborLatitude  = latitude  + (delta * lat_diff[i])
+            neighborLongitude = longitude + (delta * long_diff[i])
+
+            new_OpenGeoTile = OpenGeoTile(lat=neighborLatitude, long=neighborLongitude, tileSize=self.getTileSize())
+            if not self.isSameTile(new_OpenGeoTile):
+                '''//don't add tiles that are the same as this one due to clipping near the poles'''
+                neighbors.append(new_OpenGeoTile)
+
+        return neighbors
+
+    def isSameTile(self, potentialSameTile):
+        '''/**
+        * Check if a tile describes the same area as this one.
+        * @param potentialSameTile the OpenGeoTile to check
+        * @return true if tile sizes and addresses are the same; false if not
+        */'''
+        if potentialSameTile.getTileSize() != self.getTileSize():
+            return False
+        return potentialSameTile.getTileAddress() == self.getTileAddress()
+
+    def isNeighbor(self, potentialNeighbor):
+        '''/**
+        * Check if a tile is neighboring this one.
+        * @param potentialNeighbor the OpenGeoTile to check
+        * @return true if this and potentialNeighbor are adjacent (8-neighborhood);
+        *         false if not
+        */'''
+        if potentialNeighbor.getTileSize() == self.getTileSize():
+            '''//avoid iterating over neighbors for same tile'''
+            if self.isSameTile(potentialNeighbor):
+                return False
+
+            neighbors = self.getNeighbors()
+            for neighbor in neighbors:
+                if potentialNeighbor.isSameTile(neighbor):
+                    return True
+            return False
+        else:
+            '''//tiles of different size are adjacent if at least one neighbor of the smaller tile,
+            //but not the smaller tile itself, is contained within the bigger tile'''
+            if potentialNeighbor.getTileSize().getCodeLength() > self.tileSize.getCodeLength():
+                smallerTile = potentialNeighbor
+                biggerTile = self
+            else:
+                smallerTile = self
+                biggerTile = potentialNeighbor
+
+            if biggerTile.contains(smallerTile):
+                return False
+
+            neighbors = smallerTile.getNeighbors()
+            for neighbor in neighbors:
+                if biggerTile.contains(neighbor):
+                    return True
+            return False
+
+    def contains(self, potentialMember)
+        '''/**
+        * Check if this tile contains another one.
+        * @param potentialMember the OpenGeoTile to check
+        * @return true if the area potentialMember falls within the area of this tile, including cases
+        * where both are the same; false if not
+        */'''
+        # //if A contains B, then B's address has A's address as a prefix
+        return potentialMember.getTileAddress().startsWith(self.getTileAddress())
+
+    def getManhattanTileDistanceTo(self, otherTile):
+        '''/**
+        * Calculates the Manhattan (city block) distance between this and another tile of the same size.
+        * @param otherTile another tile of the same size as this one
+        * @return an integer value corresponding to the number of tiles of the given size that need to
+        * be traversed getting from one to the other tile
+        * @throws IllegalArgumentException thrown if otherTile has different {@link TileSize}
+        */'''
+        if otherTile.getTileSize() != self.getTileSize():
+            raise Exception("Tile sizes don't match")
+
+        return getLatitudinalTileDistance(otherTile, True) + getLongitudinalTileDistance(otherTile, True)
+
+    def getChebyshevTileDistanceTo(self, otherTile):
+        '''/**
+        * Calculates the Chebyshev (chessboard) distance between this and another tile of the same size.
+        * @param otherTile another tile of the same size as this one
+        * @return an integer value corresponding to the number of tiles of the given size that need to
+        * be traversed getting from one to the other tile
+        * @throws IllegalArgumentException thrown if otherTile has different {@link TileSize}
+        */'''
+        if otherTile.getTileSize() != self.getTileSize():
+            raise Exception("Tile sizes don't match")
+
+        return max(getLatitudinalTileDistance(otherTile, True),
+                   getLongitudinalTileDistance(otherTile, True))
+
+    def getDirection(self, otherTile):
+    '''/**
+    * Returns the approximate direction of the other tile relative to this. The return value can
+    * have a large margin of error, especially for big or far away tiles, so this should only be
+    * interpreted as a very rough approximation and used as such.
+    * @param otherTile another tile of the same size as this one
+    * @return an angle in radians, 0 being an eastward direction, +/- PI being westward direction
+    * @throws IllegalArgumentException thrown if otherTile has different {@link TileSize}
+    */'''
+        if otherTile.getTileSize() != self.getTileSize():
+            raise Exception("Tile sizes don't match")
+
+        xDiff = int(getLongitudinalTileDistance(otherTile, False))
+        yDiff = int(getLatitudinalTileDistance(otherTile, False))
+        return math.atan2(yDiff, xDiff)
+
+    def getCharacterIndex(self, c):
+        '''//following definitions copied from OpenLocationCode.java'''
+        index = "23456789CFGHJMPQRVWX".find(c.upper())
+        if index == -1:
+            raise Exception("Character does not exist in alphabet")
+        return index
+
+    def characterDistance(self, c1, c2):
+        return getCharacterIndex(c1) - getCharacterIndex(c2)
+
+    def getLatitudinalTileDistance(self, otherTile, absolute_value_bool):
+        if otherTile.getTileSize() != self.getTileSize():
+            raise Exception("Tile sizes don't match")
+
+        numIterations = self.tileSize.getCodeLength()/2 #1..5
+        tileDistance = 0
+        for i in range(numIterations):
+            tileDistance *= 20
+            c1 = self.getTileAddress()[i*2]
+            c2 = otherTile.getTileAddress()[i*2]
+            tileDistance += self.characterDistance(c1,c2)
+
+        if absolute_value_bool:
+            return abs(tileDistance)
+        return tileDistance
+
+
