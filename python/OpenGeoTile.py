@@ -1,9 +1,7 @@
 from openlocationcode import openlocationcode as olc
 from enum import Enum
 import math
-import pysnooper
 
-@pysnooper.snoop()
 class TileSize(Enum):
     ''' An area of 20° x 20°. The side length of this tile varies with its location on the globe,
         but can be up to approximately 2200km. Tile addresses will be 2 characters long.'''
@@ -308,7 +306,7 @@ def OpenGeoTile(code):
                     return True
             return False
 
-    def contains(self, potentialMember)
+    def contains(self, potentialMember):
         '''/**
         * Check if this tile contains another one.
         * @param potentialMember the OpenGeoTile to check
@@ -346,14 +344,14 @@ def OpenGeoTile(code):
                    getLongitudinalTileDistance(otherTile, True))
 
     def getDirection(self, otherTile):
-    '''/**
-    * Returns the approximate direction of the other tile relative to this. The return value can
-    * have a large margin of error, especially for big or far away tiles, so this should only be
-    * interpreted as a very rough approximation and used as such.
-    * @param otherTile another tile of the same size as this one
-    * @return an angle in radians, 0 being an eastward direction, +/- PI being westward direction
-    * @throws IllegalArgumentException thrown if otherTile has different {@link TileSize}
-    */'''
+        '''/**
+        * Returns the approximate direction of the other tile relative to this. The return value can
+        * have a large margin of error, especially for big or far away tiles, so this should only be
+        * interpreted as a very rough approximation and used as such.
+        * @param otherTile another tile of the same size as this one
+        * @return an angle in radians, 0 being an eastward direction, +/- PI being westward direction
+        * @throws IllegalArgumentException thrown if otherTile has different {@link TileSize}
+        */'''
         if otherTile.getTileSize() != self.getTileSize():
             raise Exception("Tile sizes don't match")
 
@@ -388,3 +386,30 @@ def OpenGeoTile(code):
         return tileDistance
 
 
+    def getLongitudinalTileDistance(self, otherTile, absolute_value_bool):
+        if otherTile.getTileSize() != self.getTileSize():
+            raise Exception("Tile sizes don't match")
+
+        numIterations = self.tileSize.getCodeLength()/2 #; //1..5
+        tileDistance = 0
+        for i in range(numIterations):
+            tileDistance *= 20
+            c1 = self.getTileAddress()[i*2 + 1]
+            c2 = otherTile.getTileAddress()[i*2 + 1]
+            if i == 0:
+                '''//for the first longitudinal value, we need to take care of wrapping - basically,
+                   //if it's shorter to go the other way around, do so'''
+                firstDiff = self.characterDistance(c1, c2)
+                NUM_CHARACTERS_USED = 18 #; //360°/20° = 18
+                if abs(firstDiff) > NUM_CHARACTERS_USED/2:
+                    if firstDiff > 0:
+                        firstDiff -= NUM_CHARACTERS_USED
+                    else:
+                        firstDiff += NUM_CHARACTERS_USED
+                tileDistance += firstDiff
+            else:
+                tileDistance += self.characterDistance(c1, c2)
+
+        if absolute_value_bool:
+            return abs(tileDistance)
+        return tileDistance
