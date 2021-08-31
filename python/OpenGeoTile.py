@@ -49,18 +49,20 @@ PADDING_2 = "00"
 PADDING_4 = "0000"
 PADDING_6 = "000000"
 
-def isPadded(code):
-    return code.find(PADDING_CHARACTER) != -1
-def isTileAddress(code):
-    return code.find(SEPARATOR) == -1
+def isPadded(plus_code):
+    return plus_code.find(PADDING_CHARACTER) != -1
+def isTileAddress(plus_code):
+    return plus_code.find(SEPARATOR) == -1
 
-def OpenGeoTile(code):
+class OpenGeoTile():
     def __init__(self,
                  code=None,
                  tileSize=None,
                  lat=None,
                  long=None,
                  ):
+        if not (code or (code and tileSize) or (lat and long)):
+            raise Exception("Invalid OpenGeoTile constructor arguments")
         if lat and long:
             self.constructTileFromLatLong(lat, long, tileSize)
         elif code and tileSize:
@@ -72,7 +74,7 @@ def OpenGeoTile(code):
                 self.constructTileFromCode(code)
 
 
-    def constructTileFromCode(self, code):
+    def constructTileFromCode(self, plus_code):
         '''/**
         * Creates a new OpenGeoTile from an existing
         * {@link com.google.openlocationcode.OpenLocationCode}.
@@ -80,15 +82,15 @@ def OpenGeoTile(code):
         *            case the resulting OpenGeoTile will have a larger TileSize.
         * @throws IllegalArgumentException if olc is not a full code
         */'''
-        if not olc.isFull(code):
+        if not olc.isFull(plus_code):
             raise Exception("Only full OLC supported. Use olc.recoverNearest().")
 
-        self.code = code
+        self.code = plus_code
 
-        if isPadded(code):
-            code_length = code.find(PADDING_CHARACTER)
+        if isPadded(plus_code):
+            code_length = plus_code.find(PADDING_CHARACTER)
         else:
-            code_length = min(len(code)-1, 10)
+            code_length = min(len(plus_code)-1, 10)
 
         if code_length == TileSize.GLOBAL.getCodeLength():
             self.tileSize = TileSize.GLOBAL
@@ -109,7 +111,7 @@ def OpenGeoTile(code):
             raise Exception("Too precise, sort this later")
 
 
-    def constructTileFromCodeAndSize(self, code, tileSize):
+    def constructTileFromCodeAndSize(self, plus_code, tileSize):
         '''
         Creates a new OpenGeoTile from an existing
         {@link com.google.openlocationcode.OpenLocationCode}.
@@ -118,14 +120,14 @@ def OpenGeoTile(code):
         @throws IllegalArgumentException when trying to pass a short (non-full) OLC, or if OLC has
         too much padding for given tileSize
         '''
-        if not olc.isFull(code):
+        if not olc.isFull(plus_code):
             raise Exception("Only full OLC supported. Use recover().")
 
-        if isPadded(code):
-            if code.find(PADDING_CHARACTER) < tileSize.getCodeLength():
+        if isPadded(plus_code):
+            if plus_code.find(PADDING_CHARACTER) < tileSize.getCodeLength():
                 raise Exception("OLC padding larger than allowed by tileSize")
 
-        self.code = code
+        self.code = plus_code
         self.tileSize = tileSize
 
     def constructTileFromLatLong(self, lat: float, long: float, tileSize=None):
@@ -314,7 +316,7 @@ def OpenGeoTile(code):
         * where both are the same; false if not
         */'''
         # //if A contains B, then B's address has A's address as a prefix
-        return potentialMember.getTileAddress().startsWith(self.getTileAddress())
+        return potentialMember.getTileAddress().startswith(self.getTileAddress())
 
     def getManhattanTileDistanceTo(self, otherTile):
         '''/**
@@ -413,3 +415,4 @@ def OpenGeoTile(code):
         if absolute_value_bool:
             return abs(tileDistance)
         return tileDistance
+
