@@ -14,7 +14,7 @@ class SimpleTileArea(TileArea):
         self.smallestTileSize = ogt.TileSize.GLOBAL
 
     def addNonContainedTile(newTile):
-        self.tile_list.append(newTile):
+        self.tile_list.append(newTile)
         if newTile.getTileSize().getCodeLength() > self.smallestTileSize.getCodeLength():
             self.smallestTileSize = newTile.getTileSize()
 
