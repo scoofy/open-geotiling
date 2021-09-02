@@ -1,4 +1,3 @@
-import pytest
 import OpenGeoTile as ogt
 
 originalBlock = ogt.OpenGeoTile("8CRW2X")

@@ -55,6 +55,23 @@ def isTileAddress(plus_code):
     return plus_code.find(SEPARATOR) == -1
 
 class OpenGeoTile():
+    '''
+    /**
+     * A wrapper around an {@code OpenLocationCode} object, focusing on the area identified by a prefix
+     * of the given OpenLocationCode.
+     *
+     * Using this wrapper class allows to determine whether two locations are in the same or adjacent
+     * "tiles", to determine all neighboring tiles of a given one, to calculate a distance in tiles etc.
+     *
+     * Open Location Code is a technology developed by Google and licensed under the Apache License 2.0.
+     * For more information, see https://github.com/google/open-location-code
+     *
+     * @author Andreas Bartels
+     * @version 0.1.0
+     */
+
+        Ported by scoofy on 08.31.21
+    '''
     def __init__(self,
                  code=None,
                  tileSize=None,
@@ -63,6 +80,7 @@ class OpenGeoTile():
                  ):
         if not (code or (code and tileSize) or (lat and long)):
             raise Exception("Invalid OpenGeoTile constructor arguments")
+        self.TileSize = TileSize
         if lat and long:
             self.constructTileFromLatLong(lat, long, tileSize)
         elif code and tileSize:
@@ -92,20 +110,20 @@ class OpenGeoTile():
         else:
             code_length = min(len(plus_code)-1, 10)
 
-        if code_length == TileSize.GLOBAL.getCodeLength():
-            self.tileSize = TileSize.GLOBAL
+        if code_length == self.TileSize.GLOBAL.getCodeLength():
+            self.tileSize = self.TileSize.GLOBAL
 
-        elif code_length==TileSize.REGION.getCodeLength():
-            self.tileSize = TileSize.REGION
+        elif code_length==self.TileSize.REGION.getCodeLength():
+            self.tileSize = self.TileSize.REGION
 
-        elif code_length==TileSize.DISTRICT.getCodeLength():
-            self.tileSize = TileSize.DISTRICT
+        elif code_length==self.TileSize.DISTRICT.getCodeLength():
+            self.tileSize = self.TileSize.DISTRICT
 
-        elif code_length==TileSize.NEIGHBORHOOD.getCodeLength():
-            self.tileSize = TileSize.NEIGHBORHOOD
+        elif code_length==self.TileSize.NEIGHBORHOOD.getCodeLength():
+            self.tileSize = self.TileSize.NEIGHBORHOOD
 
-        elif code_length==TileSize.PINPOINT.getCodeLength():
-            self.tileSize = TileSize.PINPOINT
+        elif code_length==self.TileSize.PINPOINT.getCodeLength():
+            self.tileSize = self.TileSize.PINPOINT
 
         else:
             raise Exception("Too precise, sort this later")
@@ -140,7 +158,7 @@ class OpenGeoTile():
         *         {@link OpenLocationCode#OpenLocationCode(double, double, int)}
         */'''
         if not tileSize:
-            tileSize = TileSize.PINPOINT
+            tileSize = self.TileSize.PINPOINT
         self.code =  olc.encode(lat, long, tileSize.getCodeLength())
         self.tileSize = tileSize
 
@@ -158,25 +176,25 @@ class OpenGeoTile():
         detectedTileSize = None
         olcBuilder = ""
 
-        if len(tileAddress) == TileSize.GLOBAL.getCodeLength():
-            detectedTileSize = TileSize.GLOBAL
+        if len(tileAddress) == self.TileSize.GLOBAL.getCodeLength():
+            detectedTileSize = self.TileSize.GLOBAL
             olcBuilder += tileAddress + PADDING_6 + SEPARATOR
 
-        if len(tileAddress) == TileSize.REGION.getCodeLength():
-            detectedTileSize = TileSize.REGION
+        if len(tileAddress) == self.TileSize.REGION.getCodeLength():
+            detectedTileSize = self.TileSize.REGION
             olcBuilder += tileAddress + PADDING_4 + SEPARATOR
 
-        if len(tileAddress) == TileSize.DISTRICT.getCodeLength():
-            detectedTileSize = TileSize.DISTRICT
+        if len(tileAddress) == self.TileSize.DISTRICT.getCodeLength():
+            detectedTileSize = self.TileSize.DISTRICT
             olcBuilder += tileAddress + PADDING_2 + SEPARATOR
 
-        if len(tileAddress) == TileSize.NEIGHBORHOOD.getCodeLength():
-            detectedTileSize = TileSize.NEIGHBORHOOD
+        if len(tileAddress) == self.TileSize.NEIGHBORHOOD.getCodeLength():
+            detectedTileSize = self.TileSize.NEIGHBORHOOD
             olcBuilder += tileAddress + SEPARATOR
 
-        if len(tileAddress) == TileSize.PINPOINT.getCodeLength():
-            detectedTileSize = TileSize.PINPOINT
-            olcBuilder += tileAddress[0:8] + SEPARATOR + tileAddress[8,10]
+        if len(tileAddress) == self.TileSize.PINPOINT.getCodeLength():
+            detectedTileSize = self.TileSize.PINPOINT
+            olcBuilder += tileAddress[0:8] + SEPARATOR + tileAddress[8:10]
 
         if detectedTileSize == None:
             raise Exception("Invalid tile address")
@@ -217,7 +235,7 @@ class OpenGeoTile():
         * @return this tile's address with the final two characters removed. In case of a GLOBAL tile,
         * returns the empty string.
         */'''
-        if self.tileSize == TileSize.GLOBAL:
+        if self.tileSize == self.TileSize.GLOBAL:
             return ""
         else:
             return self.getTileAddress()[0: self.tileSize.getCodeLength()-2]
@@ -329,7 +347,7 @@ class OpenGeoTile():
         if otherTile.getTileSize() != self.getTileSize():
             raise Exception("Tile sizes don't match")
 
-        return getLatitudinalTileDistance(otherTile, True) + getLongitudinalTileDistance(otherTile, True)
+        return self.getLatitudinalTileDistance(otherTile, True) + self.getLongitudinalTileDistance(otherTile, True)
 
     def getChebyshevTileDistanceTo(self, otherTile):
         '''/**
@@ -342,8 +360,8 @@ class OpenGeoTile():
         if otherTile.getTileSize() != self.getTileSize():
             raise Exception("Tile sizes don't match")
 
-        return max(getLatitudinalTileDistance(otherTile, True),
-                   getLongitudinalTileDistance(otherTile, True))
+        return max(self.getLatitudinalTileDistance(otherTile, True),
+                   self.getLongitudinalTileDistance(otherTile, True))
 
     def getDirection(self, otherTile):
         '''/**
@@ -357,8 +375,8 @@ class OpenGeoTile():
         if otherTile.getTileSize() != self.getTileSize():
             raise Exception("Tile sizes don't match")
 
-        xDiff = int(getLongitudinalTileDistance(otherTile, False))
-        yDiff = int(getLatitudinalTileDistance(otherTile, False))
+        xDiff = int(self.getLongitudinalTileDistance(otherTile, False))
+        yDiff = int(self.getLatitudinalTileDistance(otherTile, False))
         return math.atan2(yDiff, xDiff)
 
     def getCharacterIndex(self, c):
@@ -369,7 +387,7 @@ class OpenGeoTile():
         return index
 
     def characterDistance(self, c1, c2):
-        return getCharacterIndex(c1) - getCharacterIndex(c2)
+        return self.getCharacterIndex(c1) - self.getCharacterIndex(c2)
 
     def getLatitudinalTileDistance(self, otherTile, absolute_value_bool):
         if otherTile.getTileSize() != self.getTileSize():
@@ -377,7 +395,7 @@ class OpenGeoTile():
 
         numIterations = self.tileSize.getCodeLength()/2 #1..5
         tileDistance = 0
-        for i in range(numIterations):
+        for i in range(int(numIterations)):
             tileDistance *= 20
             c1 = self.getTileAddress()[i*2]
             c2 = otherTile.getTileAddress()[i*2]
@@ -394,7 +412,7 @@ class OpenGeoTile():
 
         numIterations = self.tileSize.getCodeLength()/2 #; //1..5
         tileDistance = 0
-        for i in range(numIterations):
+        for i in range(int(numIterations)):
             tileDistance *= 20
             c1 = self.getTileAddress()[i*2 + 1]
             c2 = otherTile.getTileAddress()[i*2 + 1]
