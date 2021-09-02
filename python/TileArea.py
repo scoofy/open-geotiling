@@ -19,7 +19,7 @@ class TileArea():
             for newTile in tile_list:
                 self.addTile(newTile)
 
-    def getShortestCoveringTileArrayList(self):
+    def getShortestCoveringTileList(self):
         '''/**
          * Get a list of tiles that fully cover this TileArea as currently defined. Note that this is
          * not necessarily the same list that went into this object over time. In case of a contiguous
