@@ -80,7 +80,6 @@ class OpenGeoTile():
                  ):
         if not (code or (code and tileSize) or (lat and long)):
             raise Exception("Invalid OpenGeoTile constructor arguments")
-        self.TileSize = TileSize
         if lat and long:
             self.constructTileFromLatLong(lat, long, tileSize)
         elif code and tileSize:
@@ -103,27 +102,27 @@ class OpenGeoTile():
         if not olc.isFull(plus_code):
             raise Exception("Only full OLC supported. Use olc.recoverNearest().")
 
-        self.code = plus_code
+        self.code = plus_code.upper()
 
         if isPadded(plus_code):
             code_length = plus_code.find(PADDING_CHARACTER)
         else:
             code_length = min(len(plus_code)-1, 10)
 
-        if code_length == self.TileSize.GLOBAL.getCodeLength():
-            self.tileSize = self.TileSize.GLOBAL
+        if code_length   == TileSize.GLOBAL.getCodeLength():
+            self.tileSize = TileSize.GLOBAL
 
-        elif code_length==self.TileSize.REGION.getCodeLength():
-            self.tileSize = self.TileSize.REGION
+        elif code_length == TileSize.REGION.getCodeLength():
+            self.tileSize = TileSize.REGION
 
-        elif code_length==self.TileSize.DISTRICT.getCodeLength():
-            self.tileSize = self.TileSize.DISTRICT
+        elif code_length == TileSize.DISTRICT.getCodeLength():
+            self.tileSize = TileSize.DISTRICT
 
-        elif code_length==self.TileSize.NEIGHBORHOOD.getCodeLength():
-            self.tileSize = self.TileSize.NEIGHBORHOOD
+        elif code_length == TileSize.NEIGHBORHOOD.getCodeLength():
+            self.tileSize = TileSize.NEIGHBORHOOD
 
-        elif code_length==self.TileSize.PINPOINT.getCodeLength():
-            self.tileSize = self.TileSize.PINPOINT
+        elif code_length == TileSize.PINPOINT.getCodeLength():
+            self.tileSize = TileSize.PINPOINT
 
         else:
             raise Exception("Too precise, sort this later")
@@ -145,7 +144,7 @@ class OpenGeoTile():
             if plus_code.find(PADDING_CHARACTER) < tileSize.getCodeLength():
                 raise Exception("OLC padding larger than allowed by tileSize")
 
-        self.code = plus_code
+        self.code = plus_code.upper()
         self.tileSize = tileSize
 
     def constructTileFromLatLong(self, lat: float, long: float, tileSize=None):
@@ -158,8 +157,8 @@ class OpenGeoTile():
         *         {@link OpenLocationCode#OpenLocationCode(double, double, int)}
         */'''
         if not tileSize:
-            tileSize = self.TileSize.PINPOINT
-        self.code =  olc.encode(lat, long, tileSize.getCodeLength())
+            tileSize = TileSize.PINPOINT
+        self.code = olc.encode(lat, long, tileSize.getCodeLength()).upper()
         self.tileSize = tileSize
 
     def constructTileFromTileAddress(self, tileAddress):
@@ -176,31 +175,31 @@ class OpenGeoTile():
         detectedTileSize = None
         olcBuilder = ""
 
-        if len(tileAddress) == self.TileSize.GLOBAL.getCodeLength():
-            detectedTileSize = self.TileSize.GLOBAL
+        if len(tileAddress) == TileSize.GLOBAL.getCodeLength():
+            detectedTileSize = TileSize.GLOBAL
             olcBuilder += tileAddress + PADDING_6 + SEPARATOR
 
-        if len(tileAddress) == self.TileSize.REGION.getCodeLength():
-            detectedTileSize = self.TileSize.REGION
+        if len(tileAddress) == TileSize.REGION.getCodeLength():
+            detectedTileSize = TileSize.REGION
             olcBuilder += tileAddress + PADDING_4 + SEPARATOR
 
-        if len(tileAddress) == self.TileSize.DISTRICT.getCodeLength():
-            detectedTileSize = self.TileSize.DISTRICT
+        if len(tileAddress) == TileSize.DISTRICT.getCodeLength():
+            detectedTileSize = TileSize.DISTRICT
             olcBuilder += tileAddress + PADDING_2 + SEPARATOR
 
-        if len(tileAddress) == self.TileSize.NEIGHBORHOOD.getCodeLength():
-            detectedTileSize = self.TileSize.NEIGHBORHOOD
+        if len(tileAddress) == TileSize.NEIGHBORHOOD.getCodeLength():
+            detectedTileSize = TileSize.NEIGHBORHOOD
             olcBuilder += tileAddress + SEPARATOR
 
-        if len(tileAddress) == self.TileSize.PINPOINT.getCodeLength():
-            detectedTileSize = self.TileSize.PINPOINT
+        if len(tileAddress) == TileSize.PINPOINT.getCodeLength():
+            detectedTileSize = TileSize.PINPOINT
             olcBuilder += tileAddress[0:8] + SEPARATOR + tileAddress[8:10]
 
         if detectedTileSize == None:
             raise Exception("Invalid tile address")
 
         self.tileSize = detectedTileSize
-        self.code = olcBuilder
+        self.code = olcBuilder.upper()
 
 
     def getWrappedOpenLocationCode(self):
@@ -235,7 +234,7 @@ class OpenGeoTile():
         * @return this tile's address with the final two characters removed. In case of a GLOBAL tile,
         * returns the empty string.
         */'''
-        if self.tileSize == self.TileSize.GLOBAL:
+        if self.tileSize == TileSize.GLOBAL:
             return ""
         else:
             return self.getTileAddress()[0: self.tileSize.getCodeLength()-2]
