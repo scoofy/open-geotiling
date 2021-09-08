@@ -1,5 +1,6 @@
 from openlocationcode import openlocationcode as olc
 from TileArea import TileArea
+from OpenGeoTile import OpenGeoTile, TileSize
 
 class SimpleTileArea(TileArea):
     '''/**
@@ -8,26 +9,29 @@ class SimpleTileArea(TileArea):
      * by removing smaller tiles when a larger, encompassing one is added) or by managing territory
      * beyond its individual, potentially non-contiguous tiles.
     */'''
-    #public class SimpleTileArea extends TileArea {
+    ''' because the tile areas don't merge, this will be inherently ineffecient
+        larger tiles will contain smaller tiles, but they will be redundant
+    '''
     def __init__(self, tile_list=[]):
+        self.smallestTileSize = TileSize.GLOBAL
         super().__init__(tile_list)
-        self.smallestTileSize = ogt.TileSize.GLOBAL
 
-    def addNonContainedTile(newTile):
+
+    def addNonContainedTile(self, newTile, convert_to_shortest_covering_tile_list=False):
         self.tile_list.append(newTile)
         if newTile.getTileSize().getCodeLength() > self.smallestTileSize.getCodeLength():
             self.smallestTileSize = newTile.getTileSize()
 
-    def getSmallestTileSize():
+    def getSmallestTileSize(self):
         return self.smallestTileSize
 
 
-    def contains(tile):
+    def contains(self, tile):
         for memberTile in self.tile_list:
             if memberTile.contains(tile):
                 return True
         return False
 
-    def getCoveringTileArrayList():
+    def getShortestCoveringTileList(self):
         return self.tile_list
 

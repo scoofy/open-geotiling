@@ -71,6 +71,10 @@ def test_getSmallestTileSize():
     print("849VMGW2+X7")
     san_francisco_TileArea.addTile(OpenGeoTile("849VMGW2+X7"))
     assert san_francisco_TileArea.getSmallestTileSize() == TileSize.PINPOINT
+    western_coast_usa = OpenGeoTile('84000000+')
+    san_francisco_TileArea.addTile(western_coast_usa)
+    assert san_francisco_TileArea.getSmallestTileSize() == TileSize.GLOBAL
+
 
 def test_addTileArea():
     # standard addition

@@ -1,5 +1,5 @@
 from openlocationcode import openlocationcode as olc
-from OpenGeoTile import OpenGeoTile
+from OpenGeoTile import OpenGeoTile, TileSize
 from operator import methodcaller
 import pprint
 pp = pprint.pformat
