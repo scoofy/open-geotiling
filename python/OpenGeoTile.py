@@ -1,6 +1,7 @@
 from openlocationcode import openlocationcode as olc
 from enum import Enum
 import math
+import pysnooper
 
 class TileSize(Enum):
     ''' An area of 20° x 20°. The side length of this tile varies with its location on the globe,
@@ -49,10 +50,26 @@ PADDING_2 = "00"
 PADDING_4 = "0000"
 PADDING_6 = "000000"
 
-def isPadded(plus_code):
+def is_padded(plus_code):
     return plus_code.find(PADDING_CHARACTER) != -1
-def isTileAddress(plus_code):
+def is_tile_address(plus_code):
     return plus_code.find(SEPARATOR) == -1
+def return_code_of_tile_size(too_precise_plus_code, desired_tile_size):
+    code = too_precise_plus_code
+    if not is_tile_address(code):
+        code = code.replace(SEPARATOR, '')
+    if is_padded(code):
+        if code.find(PADDING_CHARACTER) < desired_tile_size.getCodeLength():
+            raise Exception("OLC padding larger than allowed by desired_tile_size")
+    code_address = code[:desired_tile_size.getCodeLength()]
+    full_length = TileSize.PINPOINT.getCodeLength()
+    code = code_address + ("0" * (full_length - len(code_address)))
+    if desired_tile_size == TileSize.PINPOINT:
+        code = code[:-2] + SEPARATOR + code[-2:]
+    else:
+        code = code[:-2] + SEPARATOR
+    return code
+
 
 class OpenGeoTile():
     '''
@@ -74,18 +91,18 @@ class OpenGeoTile():
     '''
     def __init__(self,
                  code=None,
-                 tileSize=None,
+                 tile_size=None,
                  lat=None,
                  long=None,
                  ):
-        if not (code or (code and tileSize) or (lat and long)):
+        if not (code or (code and tile_size) or (lat and long)):
             raise Exception("Invalid OpenGeoTile constructor arguments")
         if lat and long:
-            self.constructTileFromLatLong(lat, long, tileSize)
-        elif code and tileSize:
-            self.constructTileFromCodeAndSize(code, tileSize)
+            self.constructTileFromLatLong(lat, long, tile_size)
+        elif code and tile_size:
+            self.constructTileFromCodeAndSize(code, tile_size)
         elif code:
-            if isTileAddress(code):
+            if is_tile_address(code):
                 self.constructTileFromTileAddress(code)
             else:
                 self.constructTileFromCode(code)
@@ -104,62 +121,60 @@ class OpenGeoTile():
 
         self.code = plus_code.upper()
 
-        if isPadded(plus_code):
+        if is_padded(plus_code):
             code_length = plus_code.find(PADDING_CHARACTER)
         else:
             code_length = min(len(plus_code)-1, 10)
 
         if code_length   == TileSize.GLOBAL.getCodeLength():
-            self.tileSize = TileSize.GLOBAL
+            self.tile_size = TileSize.GLOBAL
 
         elif code_length == TileSize.REGION.getCodeLength():
-            self.tileSize = TileSize.REGION
+            self.tile_size = TileSize.REGION
 
         elif code_length == TileSize.DISTRICT.getCodeLength():
-            self.tileSize = TileSize.DISTRICT
+            self.tile_size = TileSize.DISTRICT
 
         elif code_length == TileSize.NEIGHBORHOOD.getCodeLength():
-            self.tileSize = TileSize.NEIGHBORHOOD
+            self.tile_size = TileSize.NEIGHBORHOOD
 
         elif code_length == TileSize.PINPOINT.getCodeLength():
-            self.tileSize = TileSize.PINPOINT
+            self.tile_size = TileSize.PINPOINT
 
         else:
             raise Exception("Too precise, sort this later")
 
 
-    def constructTileFromCodeAndSize(self, plus_code, tileSize):
+    def constructTileFromCodeAndSize(self, plus_code, tile_size):
         '''
         Creates a new OpenGeoTile from an existing
         {@link com.google.openlocationcode.OpenLocationCode}.
         @param olc OpenLocationCode for the current location
-        @param tileSize tile size to use for this OpenGeoTile
+        @param tile_size tile size to use for this OpenGeoTile
         @throws IllegalArgumentException when trying to pass a short (non-full) OLC, or if OLC has
-        too much padding for given tileSize
+        too much padding for given tile_size
         '''
         if not olc.isFull(plus_code):
             raise Exception("Only full OLC supported. Use recover().")
+        modified_plus_code = return_code_of_tile_size(plus_code, tile_size)
 
-        if isPadded(plus_code):
-            if plus_code.find(PADDING_CHARACTER) < tileSize.getCodeLength():
-                raise Exception("OLC padding larger than allowed by tileSize")
 
-        self.code = plus_code.upper()
-        self.tileSize = tileSize
+        self.code = modified_plus_code.upper()
+        self.tile_size = tile_size
 
-    def constructTileFromLatLong(self, lat: float, long: float, tileSize=None):
+    def constructTileFromLatLong(self, lat: float, long: float, tile_size=None):
         '''/**
         * Creates a new OpenGeoTile from lat/long coordinates.
         * @param latitude latitude of the location
         * @param longitude longitude of the location
-        * @param tileSize tile size to use for this OpenGeoTile
+        * @param tile_size tile size to use for this OpenGeoTile
         * @throws IllegalArgumentException passed through from
         *         {@link OpenLocationCode#OpenLocationCode(double, double, int)}
         */'''
-        if not tileSize:
-            tileSize = TileSize.PINPOINT
-        self.code = olc.encode(lat, long, tileSize.getCodeLength()).upper()
-        self.tileSize = tileSize
+        if not tile_size:
+            tile_size = TileSize.PINPOINT
+        self.code = olc.encode(lat, long, tile_size.getCodeLength()).upper()
+        self.tile_size = tile_size
 
     def constructTileFromTileAddress(self, tileAddress):
         '''/**
@@ -198,9 +213,8 @@ class OpenGeoTile():
         if detectedTileSize == None:
             raise Exception("Invalid tile address")
 
-        self.tileSize = detectedTileSize
+        self.tile_size = detectedTileSize
         self.code = olcBuilder.upper()
-
 
     def getWrappedOpenLocationCode(self):
         # this code is effectively redundant as python has no wrapping
@@ -211,12 +225,15 @@ class OpenGeoTile():
         */'''
         return self.code
 
+    def returnCode(self):
+        return self.code
+
     def getTileSize(self):
         '''/**
         * Get the {@link TileSize} of this OpenGeoTile.
         * @return the {@link TileSize} of this OpenGeoTile
         */'''
-        return self.tileSize
+        return self.tile_size
 
     def getTileAddress(self):
         '''/**
@@ -226,7 +243,7 @@ class OpenGeoTile():
         * @return the tile address of this OpenGeoTile;
          */'''
         intermediate = self.code.replace(SEPARATOR, "")
-        return intermediate[0: self.tileSize.getCodeLength()]
+        return intermediate[0: self.tile_size.getCodeLength()]
 
     def getTileAddressPrefix(self):
         '''/**
@@ -234,10 +251,10 @@ class OpenGeoTile():
         * @return this tile's address with the final two characters removed. In case of a GLOBAL tile,
         * returns the empty string.
         */'''
-        if self.tileSize == TileSize.GLOBAL:
+        if self.tile_size == TileSize.GLOBAL:
             return ""
         else:
-            return self.getTileAddress()[0: self.tileSize.getCodeLength()-2]
+            return self.getTileAddress()[0: self.tile_size.getCodeLength()-2]
 
     def getTileOpenLocationCode(self):
         # this code is redundant
@@ -246,14 +263,15 @@ class OpenGeoTile():
         * {@link #getWrappedOpenLocationCode()}, this will return a full plus code for the whole tile.
         * @return a plus code for the whole tile, probably padded with '0' characters
         */'''
-        intermediate = OpenGeoTile(self.getTileAddress())
-        return intermediate.getWrappedOpenLocationCode()
-    def getNeighbors(self):
+        return self.getWrappedOpenLocationCode()
+
+    def getNeighbors(self, eight_point_direction=None):
         '''/**
         * Get an array of the typically 8  neighboring tiles of the same size.
         * @return an array of the typically 8 neighboring tiles of the same size;
         * may return less than 8 neighbors for tiles near the poles.
         */'''
+
         # deltas = [20.0, 1.0, 0.05, 0.0025, 0.000125]
         delta = self.getTileSize().getCoordinateIncrement()
 
@@ -261,18 +279,39 @@ class OpenGeoTile():
         latitude = code_area.latitudeCenter
         longitude = code_area.longitudeCenter
 
-        lat_diff = [+1,+1,+1, 0,-1,-1,-1, 0]
-        long_diff = [-1, 0,+1,+1,+1, 0,-1,-1]
+        '''directions_list included to keep ordered data'''
+        directions_list = ["NW", "N", "NE", "E", "SE", "S", "SW", "W"]
+        direction_dict = {
+            "NW": [+1, -1], "N": [+1, 0],   "NE": [+1, +1],
+             "W": [ 0, -1],                  "E": [ 0, +1],
+            "SW": [-1, -1], "S": [-1, 0],   "SE": [-1, +1],
+        }
+
+        #lat_diff =  [+1, +1, +1,  0, -1, -1, -1,  0]
+        #long_diff = [-1,  0, +1, +1, +1,  0, -1, -1]
+
+        if not type(eight_point_direction) in [type(None), list, str]:
+            raise Exception("eight_point_direction must be of type list or str")
+        if eight_point_direction is None:
+            directions = directions_list
+        elif isinstance(eight_point_direction, str):
+            directions = []
+            if eight_point_direction.upper() in directions_list:
+                directions.append(eight_point_direction.upper())
+        else:
+            ''' this list construction keeps directions in the order above '''
+            uppercase_input_directions = [d.upper() for d in eight_point_direction]
+            directions = [direction for direction in directions_list if direction in uppercase_input_directions]
 
         neighbors = []
-
-        for i in range(8):
+        for direction in directions:
+            lat_diff, long_diff = direction_dict.get(direction)
             ''' //OLC constructor clips and normalizes,
                 //so we don't have to deal with invalid lat/long values directly'''
-            neighborLatitude  = latitude  + (delta * lat_diff[i])
-            neighborLongitude = longitude + (delta * long_diff[i])
+            neighborLatitude  = latitude  + (delta * lat_diff)
+            neighborLongitude = longitude + (delta * long_diff)
 
-            new_OpenGeoTile = OpenGeoTile(lat=neighborLatitude, long=neighborLongitude, tileSize=self.getTileSize())
+            new_OpenGeoTile = OpenGeoTile(lat=neighborLatitude, long=neighborLongitude, tile_size=self.getTileSize())
             if not self.isSameTile(new_OpenGeoTile):
                 '''//don't add tiles that are the same as this one due to clipping near the poles'''
                 neighbors.append(new_OpenGeoTile)
@@ -309,7 +348,7 @@ class OpenGeoTile():
         else:
             '''//tiles of different size are adjacent if at least one neighbor of the smaller tile,
             //but not the smaller tile itself, is contained within the bigger tile'''
-            if potentialNeighbor.getTileSize().getCodeLength() > self.tileSize.getCodeLength():
+            if potentialNeighbor.getTileSize().getCodeLength() > self.tile_size.getCodeLength():
                 smallerTile = potentialNeighbor
                 biggerTile = self
             else:
@@ -392,7 +431,7 @@ class OpenGeoTile():
         if otherTile.getTileSize() != self.getTileSize():
             raise Exception("Tile sizes don't match")
 
-        numIterations = self.tileSize.getCodeLength()/2 #1..5
+        numIterations = self.tile_size.getCodeLength()/2 #1..5
         tileDistance = 0
         for i in range(int(numIterations)):
             tileDistance *= 20
@@ -409,7 +448,7 @@ class OpenGeoTile():
         if otherTile.getTileSize() != self.getTileSize():
             raise Exception("Tile sizes don't match")
 
-        numIterations = self.tileSize.getCodeLength()/2 #; //1..5
+        numIterations = self.tile_size.getCodeLength()/2 #; //1..5
         tileDistance = 0
         for i in range(int(numIterations)):
             tileDistance *= 20

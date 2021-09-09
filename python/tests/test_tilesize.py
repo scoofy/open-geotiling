@@ -12,10 +12,10 @@ import OpenGeoTile as ogt
 def test_GlobalSize():
     pluscode = "CCXWXWXW+XW"
 
-    tileSize = ogt.TileSize.GLOBAL
+    tile_size = ogt.TileSize.GLOBAL
     codeLength = ogt.TileSize.GLOBAL.getCodeLength()
 
-    block1 = ogt.OpenGeoTile(pluscode, tileSize)
+    block1 = ogt.OpenGeoTile(pluscode, tile_size)
 
     assert codeLength == 2
     assert block1.getTileAddress() == pluscode[0:codeLength]
@@ -25,10 +25,10 @@ def test_GlobalSize():
 def test_RegionSize():
     pluscode = "CCXWXWXW+XW"
 
-    tileSize = ogt.TileSize.REGION
+    tile_size = ogt.TileSize.REGION
     codeLength = ogt.TileSize.REGION.getCodeLength()
 
-    block1 = ogt.OpenGeoTile(pluscode, tileSize)
+    block1 = ogt.OpenGeoTile(pluscode, tile_size)
 
     assert codeLength == 4
     assert block1.getTileAddress() == pluscode[0:codeLength]
@@ -38,10 +38,10 @@ def test_RegionSize():
 def test_DistrictSize():
     pluscode = "CCXWXWXW+XW"
 
-    tileSize = ogt.TileSize.DISTRICT
+    tile_size = ogt.TileSize.DISTRICT
     codeLength = ogt.TileSize.DISTRICT.getCodeLength()
 
-    block1 = ogt.OpenGeoTile(pluscode, tileSize)
+    block1 = ogt.OpenGeoTile(pluscode, tile_size)
 
     assert codeLength == 6
     assert block1.getTileAddress() == pluscode[0:codeLength]
@@ -51,10 +51,10 @@ def test_DistrictSize():
 def test_NeighborhoodSize():
     pluscode = "CCXWXWXW+XW"
 
-    tileSize = ogt.TileSize.NEIGHBORHOOD
+    tile_size = ogt.TileSize.NEIGHBORHOOD
     codeLength = ogt.TileSize.NEIGHBORHOOD.getCodeLength()
 
-    block1 = ogt.OpenGeoTile(pluscode, tileSize)
+    block1 = ogt.OpenGeoTile(pluscode, tile_size)
 
     assert codeLength == 8
     assert block1.getTileAddress() == pluscode[0:codeLength]
@@ -64,10 +64,10 @@ def test_NeighborhoodSize():
 def test_PinpointSize():
     pluscode = "CCXWXWXW+XW"
 
-    tileSize = ogt.TileSize.PINPOINT
+    tile_size = ogt.TileSize.PINPOINT
     codeLength = ogt.TileSize.PINPOINT.getCodeLength()
 
-    block1 = ogt.OpenGeoTile(pluscode, tileSize)
+    block1 = ogt.OpenGeoTile(pluscode, tile_size)
 
     assert codeLength == 10
     assert block1.getTileAddress() == pluscode.replace("+","")

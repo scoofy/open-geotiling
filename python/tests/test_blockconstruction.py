@@ -9,9 +9,9 @@ import OpenGeoTile as ogt
 
 def test_constructionsSameBlock():
         pluscode = "CCXWXWXW+XW"
-        tileSize = ogt.TileSize.DISTRICT
+        tile_size = ogt.TileSize.DISTRICT
 
-        block2 = ogt.OpenGeoTile(pluscode, tileSize)
+        block2 = ogt.OpenGeoTile(pluscode, tile_size)
         block4 = ogt.OpenGeoTile(block2.getTileAddress())
 
 

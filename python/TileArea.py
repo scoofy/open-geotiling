@@ -163,5 +163,5 @@ class TileArea():
          * @param longitude longitude value of the location to be checked
          * @return true if inside, false if not
         */'''
-        return self.contains(OpenGeoTile(lat=lat, long=long, tileSize=self.getSmallestTileSize()))
+        return self.contains(OpenGeoTile(lat=lat, long=long, tile_size=self.getSmallestTileSize()))
 
