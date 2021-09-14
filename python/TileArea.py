@@ -98,7 +98,7 @@ class TileArea():
          * @param tile an OpenGeoTile, the area of which will be checked
          * @return true if the whole area of {@code tile} is inside this object's area, false if not
         */'''
-        for existing_tile in self.getShortestCoveringTileList():
+        for existing_tile in self.tile_list:
             if existing_tile.contains(tile):
                 return True
         return False
