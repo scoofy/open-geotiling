@@ -1,4 +1,5 @@
 from OpenGeoTile import OpenGeoTile, TileSize
+from openlocationcode import openlocationcode as olc
 
 '''
     by scoofy on 09.08.21
@@ -6,6 +7,7 @@ from OpenGeoTile import OpenGeoTile, TileSize
 
 north_pole_and_svalbard_tile = OpenGeoTile('CF')
 peuget_sound = OpenGeoTile('84VV0000+')
+
 
 def test_TileSize():
     assert TileSize.GLOBAL.getCodeLength() == 2
@@ -150,12 +152,47 @@ def test_contains():
     assert not peuget_sound.contains(us_west_coast)
     assert not peuget_sound.contains(uc_berkeley_statium)
 
+def test_returnSetOfSubtiles():
+    uc_berkeley_address = '849VVPCX'
+    BASE_20_SET = {x+y for x in olc.CODE_ALPHABET_ for y in olc.CODE_ALPHABET_}
+    berkeley_statium_address_subset = set()
+    for base in BASE_20_SET:
+        berkeley_statium_address_subset.add(uc_berkeley_address + base)
+    assert len(berkeley_statium_address_subset) == 20 * 20
 
+    uc_berkeley_statium = OpenGeoTile('849VVPCX+')
+    berkeley_statium_tile_subset = uc_berkeley_statium.returnSetOfSubtiles()
+    assert berkeley_statium_address_subset == {tile.getTileAddress() for tile in berkeley_statium_tile_subset}
 
+    seattle_address = '84VVJM'
+    seattle_address_subset = set()
+    seattle_address_double_subset = set()
+    for base in BASE_20_SET:
+        seattle_address_subset.add(seattle_address + base)
+        for subbase in BASE_20_SET:
+            seattle_address_double_subset.add(seattle_address + base + subbase)
 
+    assert len(seattle_address_subset) == 20 * 20
 
+    seattle = OpenGeoTile('84VVJM00+')
 
+    seattle_tile_subset = seattle.returnSetOfSubtiles(desired_tile_size=TileSize.NEIGHBORHOOD)
+    assert seattle_address_subset == {tile.getTileAddress() for tile in seattle_tile_subset}
 
+    seattle_tile_double_subset = seattle.returnSetOfSubtiles()
+    assert seattle_address_double_subset == {tile.getTileAddress() for tile in seattle_tile_double_subset}
+
+def test_returnSetOfBorderSubtiles():
+    uc_berkeley_statium = OpenGeoTile('849VVPCX+')
+    berkeley_statium_tile_subset = uc_berkeley_statium.returnSetOfSubtiles()
+    berkeley_border_address_verify = {tile.getTileAddress() for tile in berkeley_statium_tile_subset
+                                        if (tile.getTileAddress()[-1] in ['2', 'X'])
+                                        or (tile.getTileAddress()[-2] in ['2', 'X'])
+                                     }
+    assert len(berkeley_border_address_verify) == (20 * 4) - 4
+
+    berkeley_border_tile_set = uc_berkeley_statium.returnSetOfBorderSubtiles()
+    assert berkeley_border_address_verify == {tile.getTileAddress() for tile in berkeley_border_tile_set}
 
 
 

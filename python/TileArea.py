@@ -164,6 +164,47 @@ class TileArea():
          * @return true if inside, false if not
         */'''
         return self.contains(OpenGeoTile(lat=lat, long=long, tile_size=self.getSmallestTileSize()))
+
+    def getEdgeTileSet(self):
+        edge_addresses = set()
+        contained_addresses = set()
+        external_addresses = set()
+        for tile in self.tile_list:
+            tile_is_edge = False
+            if tile.tile_size.getCodeLength() != TileSize.PINPOINT.getCodeLength():
+                border_subtile_set = tile.returnSetOfBorderSubtiles()
+            else:
+                border_subtile_set = set([tile])
+            for subtile in border_subtile_set:
+                if not tile_is_edge:
+                    neighbors = subtile.getNeighbors()
+                    for neighbor in neighbors:
+                        if not tile_is_edge:
+                            if neighbor.getTileAddress() in contained_addresses:
+                                continue
+                            elif self.contains(neighbor):
+                                contained_addresses.add(neighbor.getTileAddress())
+                                continue
+                            elif neighbor.getTileAddress() in external_addresses:
+                                edge_addresses.add(tile.getTileAddress())
+                                tile_is_edge = True
+                                break
+                            elif not self.contains(neighbor):
+                                external_addresses.add(neighbor.getTileAddress())
+                                edge_addresses.add(tile.getTileAddress())
+                                tile_is_edge = True
+                                break
+        edge_tile_set = set()
+        for tile in self.tile_list:
+            if not tile in edge_tile_set:
+                for address in edge_addresses:
+                    if address.startswith(tile.getTileAddress()):
+                        edge_tile_set.add(tile)
+                        break
+        return edge_tile_set
+
+
+
 class SimpleTileArea(TileArea):
     '''/**
      * Simplest implementation of {@link TileArea} possible. This just collects all tiles that are added

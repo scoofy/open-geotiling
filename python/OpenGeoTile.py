@@ -49,6 +49,12 @@ PADDING_CHARACTER = '0'
 PADDING_2 = "00"
 PADDING_4 = "0000"
 PADDING_6 = "000000"
+BASE_20_SET = {x+y for x in olc.CODE_ALPHABET_ for y in olc.CODE_ALPHABET_}
+BASE_20_BORDER_SET = {x for x in BASE_20_SET if x[0] in ['2', 'X'] or x[1] in ['2', 'X']}
+NORTH_DIGITS = {x for x in BASE_20_BORDER_SET if x[0] == 'X'}
+EAST_DIGITS = {x for x in BASE_20_BORDER_SET if x[1] == 'X'}
+SOUTH_DIGITS = {x for x in BASE_20_BORDER_SET if x[0] == '2'}
+WEST_DIGITS = {x for x in BASE_20_BORDER_SET if x[1] == '2'}
 
 def is_padded(plus_code):
     return plus_code.find(PADDING_CHARACTER) != -1
@@ -70,6 +76,15 @@ def return_code_of_tile_size(too_precise_plus_code, desired_tile_size):
         code = code[:-2] + SEPARATOR
     return code
 
+def return_set_of_subaddresses(set_of_addresses):
+    set_to_return = set()
+    for address in set_of_addresses:
+        if len(address) == TileSize.PINPOINT.getCodeLength():
+            ''' address already minimum possible size '''
+            return None
+        for base in BASE_20_SET:
+            set_to_return.add(address + base)
+    return set_to_return
 
 class OpenGeoTile():
     '''
@@ -211,6 +226,7 @@ class OpenGeoTile():
             olcBuilder += tileAddress[0:8] + SEPARATOR + tileAddress[8:10]
 
         if detectedTileSize == None:
+            print(tileAddress)
             raise Exception("Invalid tile address")
 
         self.tile_size = detectedTileSize
@@ -471,4 +487,69 @@ class OpenGeoTile():
         if absolute_value_bool:
             return abs(tileDistance)
         return tileDistance
+
+    def returnSetOfSubtiles(self, desired_tile_size=TileSize.PINPOINT):
+        if self.tile_size.getCodeLength() == desired_tile_size.getCodeLength():
+            ''' tile is desired size '''
+            return self
+        elif self.tile_size.getCodeLength() > desired_tile_size.getCodeLength():
+            'desired_tile_size is too big'
+            raise Exception("OLC padding larger than allowed by desired_tile_size")
+        iterations_needed = desired_tile_size.getCodeLength()/2 - self.tile_size.getCodeLength()/2
+        address_set = set([self.getTileAddress()])
+        for i in range(int(iterations_needed)):
+            address_set = return_set_of_subaddresses(address_set)
+        tile_set = {OpenGeoTile(address) for address in address_set}
+        return tile_set
+
+    def returnSetOfBorderSubtiles(self, desired_tile_size=TileSize.PINPOINT):
+        if self.tile_size.getCodeLength() == desired_tile_size.getCodeLength():
+            ''' tile is desired size '''
+            return self
+        elif self.tile_size.getCodeLength() > desired_tile_size.getCodeLength():
+            'desired_tile_size is too big'
+            raise Exception("OLC padding larger than allowed by desired_tile_size")
+        iterations_needed = desired_tile_size.getCodeLength()/2 - self.tile_size.getCodeLength()/2
+        address_set = set([self.getTileAddress()])
+        for i in range(int(iterations_needed)):
+            address_set = return_set_of_subaddresses(address_set)
+        tile_set = {OpenGeoTile(address) for address in address_set}
+        return tile_set
+
+    def returnSetOfBorderSubtiles(self, desired_tile_size=TileSize.PINPOINT):
+        address = self.getTileAddress()
+
+        if len(address) == TileSize.PINPOINT.getCodeLength():
+            ''' address already minimum possible size '''
+            return None
+        elif self.tile_size.getCodeLength() > desired_tile_size.getCodeLength():
+            'desired_tile_size is too big'
+            raise Exception("OLC padding larger than allowed by desired_tile_size")
+
+        iterations_needed = desired_tile_size.getCodeLength()/2 - self.tile_size.getCodeLength()/2
+
+        north_set = {address + x for x in NORTH_DIGITS}
+        east_set = {address + x for x in EAST_DIGITS}
+        south_set = {address + x for x in SOUTH_DIGITS}
+        west_set = {address + x for x in WEST_DIGITS}
+
+        for i in range(int(iterations_needed) - 1):
+            north_set = {x+y for x in north_set for y in NORTH_DIGITS}
+            east_set = {x+y for x in east_set for y in EAST_DIGITS}
+            south_set = {x+y for x in south_set for y in SOUTH_DIGITS}
+            west_set = {x+y for x in west_set for y in WEST_DIGITS}
+
+        set_of_border_subaddresses = set().union(north_set, east_set, south_set, west_set)
+        return {OpenGeoTile(x) for x in set_of_border_subaddresses}
+
+
+
+
+
+
+
+
+
+
+
 

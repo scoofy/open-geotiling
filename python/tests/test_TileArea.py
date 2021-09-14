@@ -116,6 +116,23 @@ def test_containsLatLong():
     assert not san_francisco_TileArea.containsLatLong(eiffel_tower_lat, eiffel_tower_long)
 
 
+def test_getEdgeTileSet():
+    missing_digits = ['8','9','C','F','G','H','J','M','P','Q','R','V']
+    gw_high_school_sf_border_addresses = [
+        '849VQGH5',
+        '849VQGG5X7', '849VQGG5XW',
+        '849VQGG5W7', '849VQGG5WW',
+    ]
+    for digit in missing_digits:
+        gw_high_school_sf_border_addresses.append('849VQGG5W'+digit)
+    gw_high_school_sf_NON_border_addresses = ['849VQGG5X' + digit for digit in missing_digits]
+
+    gw_high_addresses = gw_high_school_sf_border_addresses + gw_high_school_sf_NON_border_addresses
+
+    gw_high = TileArea([OpenGeoTile(address) for address in gw_high_addresses])
+
+    gw_edge_tiles = gw_high.getEdgeTileSet()
+    assert {tile.getTileAddress() for tile in gw_edge_tiles} == set(gw_high_school_sf_border_addresses)
 
 
 
