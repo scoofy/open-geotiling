@@ -1,5 +1,5 @@
 from openlocationcode import openlocationcode as olc
-from SimpleTileArea import SimpleTileArea
+from TileArea import SimpleTileArea
 from OpenGeoTile import OpenGeoTile, TileSize
 import pytest
 
