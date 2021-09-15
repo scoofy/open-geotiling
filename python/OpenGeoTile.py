@@ -49,7 +49,8 @@ PADDING_CHARACTER = '0'
 PADDING_2 = "00"
 PADDING_4 = "0000"
 PADDING_6 = "000000"
-BASE_20_SET = {x+y for x in olc.CODE_ALPHABET_ for y in olc.CODE_ALPHABET_}
+CODE_ALPHABET = olc.CODE_ALPHABET_
+BASE_20_SET = {x+y for x in CODE_ALPHABET for y in CODE_ALPHABET}
 BASE_20_BORDER_SET = {x for x in BASE_20_SET if x[0] in ['2', 'X'] or x[1] in ['2', 'X']}
 NORTH_DIGITS = {x for x in BASE_20_BORDER_SET if x[0] == 'X'}
 EAST_DIGITS = {x for x in BASE_20_BORDER_SET if x[1] == 'X'}
@@ -433,6 +434,56 @@ class OpenGeoTile():
         yDiff = int(self.getLatitudinalTileDistance(otherTile, False))
         return math.atan2(yDiff, xDiff)
 
+    def getEightPointDirectionOfNeighbor(self, neighborTile):
+        ''' returns neighbor's direction, to assist in expanding tile areas '''
+        if not self.isNeighbor(neighborTile):
+            raise Exception("neighborTile must be neighbor")
+        if neighborTile.getTileSize() != self.getTileSize():
+            raise Exception("Tile sizes don't match")
+        self_tile_x = self.getTileAddress()[-2]
+        self_tile_y = self.getTileAddress()[-1]
+        other_tile_x = neighborTile.getTileAddress()[-2]
+        other_tile_y = neighborTile.getTileAddress()[-1]
+
+        direction = ""
+        north_south = None
+
+        if self_tile_x != other_tile_x:
+            ''' one tile is above the other '''
+            if CODE_ALPHABET.find(self_tile_x) in [0, len(CODE_ALPHABET)-1] and CODE_ALPHABET.find(other_tile_x) in [0, len(CODE_ALPHABET)-1]:
+                ''' ajacent parent tiles '''
+                if CODE_ALPHABET.find(other_tile_x) == 0:
+                    ''' other tile is above -> neighborTile is north '''
+                    direction = direction + 'N'
+                else:
+                    direction = direction + 'S'
+            else:
+                if CODE_ALPHABET.find(self_tile_x) < CODE_ALPHABET.find(other_tile_x):
+                    ''' other tile is above -> neighborTile is north '''
+                    direction = direction + 'N'
+                else:
+                    ''' other tile is below -> neighborTile is south '''
+                    direction = direction + 'S'
+        if self_tile_y != other_tile_y:
+            ''' one tile is above the other '''
+            if CODE_ALPHABET.find(self_tile_y) in [0, len(CODE_ALPHABET)-1] and CODE_ALPHABET.find(other_tile_y) in [0, len(CODE_ALPHABET)-1]:
+                ''' ajacent parent tiles '''
+                if CODE_ALPHABET.find(other_tile_y) == 0:
+                    ''' other tile is right -> neighborTile is east '''
+                    direction = direction + 'E'
+                else:
+                    ''' other tile is left -> neighborTile is west '''
+                    direction = direction + 'W'
+            else:
+                if CODE_ALPHABET.find(self_tile_y) < CODE_ALPHABET.find(other_tile_y):
+                    ''' other tile is right -> neighborTile is east '''
+                    direction = direction + 'E'
+                else:
+                    ''' other tile is left -> neighborTile is west '''
+                    direction = direction + 'W'
+        return direction
+
+
     def getCharacterIndex(self, c):
         '''//following definitions copied from OpenLocationCode.java'''
         index = "23456789CFGHJMPQRVWX".find(c.upper())
@@ -502,21 +553,7 @@ class OpenGeoTile():
         tile_set = {OpenGeoTile(address) for address in address_set}
         return tile_set
 
-    def returnSetOfBorderSubtiles(self, desired_tile_size=TileSize.PINPOINT):
-        if self.tile_size.getCodeLength() == desired_tile_size.getCodeLength():
-            ''' tile is desired size '''
-            return self
-        elif self.tile_size.getCodeLength() > desired_tile_size.getCodeLength():
-            'desired_tile_size is too big'
-            raise Exception("OLC padding larger than allowed by desired_tile_size")
-        iterations_needed = desired_tile_size.getCodeLength()/2 - self.tile_size.getCodeLength()/2
-        address_set = set([self.getTileAddress()])
-        for i in range(int(iterations_needed)):
-            address_set = return_set_of_subaddresses(address_set)
-        tile_set = {OpenGeoTile(address) for address in address_set}
-        return tile_set
-
-    def returnSetOfBorderSubtiles(self, desired_tile_size=TileSize.PINPOINT):
+    def returnSetOfBorderSubtiles(self, desired_tile_size=TileSize.PINPOINT, eight_point_direction=None):
         address = self.getTileAddress()
 
         if len(address) == TileSize.PINPOINT.getCodeLength():
@@ -528,18 +565,45 @@ class OpenGeoTile():
 
         iterations_needed = desired_tile_size.getCodeLength()/2 - self.tile_size.getCodeLength()/2
 
-        north_set = {address + x for x in NORTH_DIGITS}
-        east_set = {address + x for x in EAST_DIGITS}
-        south_set = {address + x for x in SOUTH_DIGITS}
-        west_set = {address + x for x in WEST_DIGITS}
+        north_set = set()
+        east_set = set()
+        south_set = set()
+        west_set = set()
 
-        for i in range(int(iterations_needed) - 1):
-            north_set = {x+y for x in north_set for y in NORTH_DIGITS}
-            east_set = {x+y for x in east_set for y in EAST_DIGITS}
-            south_set = {x+y for x in south_set for y in SOUTH_DIGITS}
-            west_set = {x+y for x in west_set for y in WEST_DIGITS}
+        if isinstance(eight_point_direction, str):
+            eight_point_direction = eight_point_direction.upper()
 
-        set_of_border_subaddresses = set().union(north_set, east_set, south_set, west_set)
+        immutable_digit_dict = {
+            "N": NORTH_DIGITS,
+            "E": EAST_DIGITS,
+            "S": SOUTH_DIGITS,
+            "W": WEST_DIGITS,
+        }
+
+        set_of_border_subaddresses = set()
+        if eight_point_direction is None:
+            ''' all borders '''
+            for immutable_direction_digit_set in immutable_digit_dict.values():
+                set_to_add = {address + x for x in immutable_direction_digit_set}
+                for i in range(int(iterations_needed) - 1):
+                    set_to_add = {x+y for x in set_to_add for y in immutable_direction_digit_set}
+                set_of_border_subaddresses = set_of_border_subaddresses.union(set_to_add)
+        elif len(eight_point_direction) == 1:
+            ''' North, South, East, or West '''
+            immutable_direction_digit_set = immutable_digit_dict.get(eight_point_direction)
+            set_to_add = {address + x for x in immutable_direction_digit_set}
+            for i in range(int(iterations_needed) - 1):
+                set_to_add = {x+y for x in set_to_add for y in immutable_direction_digit_set}
+            set_of_border_subaddresses = set_to_add
+        elif len(eight_point_direction) == 2:
+            ''' NW, NE, SW, SE... should return only one tile'''
+            relevant_set = immutable_digit_dict.get(eight_point_direction[0]) & immutable_digit_dict.get(eight_point_direction[1])
+            ''' this relevant_set should just be len(1)'''
+            direction_suffix = relevant_set.pop()
+            set_to_add = {address + direction_suffix}
+            for i in range(int(iterations_needed) - 1):
+                set_to_add = {x+direction_suffix for x in set_to_add}
+            set_of_border_subaddresses = set_to_add
         return {OpenGeoTile(x) for x in set_of_border_subaddresses}
 
 

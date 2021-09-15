@@ -3,8 +3,15 @@ from TileArea import TileArea
 from OpenGeoTile import OpenGeoTile, TileSize
 import pytest
 
-digits = [2,3,4,5,6,7,8,9,'C','F','G','H','J','M','P','Q','R','V','W','X']
-digit_mapping_dict = {str(index): str(digit) for index, digit in enumerate(digits)}
+CODE_ALPHABET = olc.CODE_ALPHABET_
+BASE_20_SET = {x+y for x in CODE_ALPHABET for y in CODE_ALPHABET}
+BASE_20_BORDER_SET = {x for x in BASE_20_SET if x[0] in ['2', 'X'] or x[1] in ['2', 'X']}
+NORTH_DIGITS = {x for x in BASE_20_BORDER_SET if x[0] == 'X'}
+EAST_DIGITS = {x for x in BASE_20_BORDER_SET if x[1] == 'X'}
+SOUTH_DIGITS = {x for x in BASE_20_BORDER_SET if x[0] == '2'}
+WEST_DIGITS = {x for x in BASE_20_BORDER_SET if x[1] == '2'}
+
+digit_mapping_dict = {str(index): str(digit) for index, digit in enumerate(list(CODE_ALPHABET))}
 san_francisco_codes = [
                  "849VRG00+", "849VRH00+", "849VRJ00+",
     "849VQF00+", "849VQG00+", "849VQH00+", "849VQJ00+",
@@ -134,17 +141,93 @@ def test_getEdgeTileSet():
     gw_edge_tiles = gw_high.getEdgeTileSet()
     assert {tile.getTileAddress() for tile in gw_edge_tiles} == set(gw_high_school_sf_border_addresses)
 
+def test_expandTileArea():
+    'test expand by one same sized unit'
+    berkeley_codes = [
+                                            '849VWP00+',
+                                '849VVM00+','849VVP00+',
+        ]
+    berkeley_tile_list = [OpenGeoTile(code) for code in berkeley_codes]
+    berkeley_TileArea = TileArea(berkeley_tile_list)
+
+    surrounding_codes = [
+                                '849VXM00+','849VXP00+','849VXQ00+',
+                    '849VWJ00+','849VWM00+',            '849VWQ00+',
+                    '849VVJ00+',                        '849VVQ00+',
+                    '849VRJ00+','849VRM00+','849VRP00+','849VRQ00+',
+        ]
+    surrounding_tiles = [OpenGeoTile(code) for code in surrounding_codes]
+    manual_TileArea = TileArea(berkeley_tile_list + surrounding_tiles)
+
+    berkeley_TileArea.expandTileArea(TileSize.DISTRICT)
+
+    assert  {t.getTileAddress() for t in berkeley_TileArea.tile_list} == {
+             t.getTileAddress() for t in manual_TileArea.tile_list  }
+
+    ''' test expand by 2 same size units '''
+    berkeley_TileArea = TileArea(berkeley_tile_list)
+
+    surrounding_x2_codes = [
+                    '84CV2J00+','84CV2M00+','84CV2P00+','84CV2Q00+','84CV2R00+',
+        '849VXH00+','849VXJ00+',                                    '849VXR00+',
+        '849VWH00+',                                                '849VWR00+',
+        '849VVH00+',                                                '849VVR00+',
+        '849VRH00+',                                                '849VRR00+',
+        '849VQH00+','849VQJ00+','849VQM00+','849VQP00+','849VQQ00+','849VQR00+',
+        ]
+    surrounding_x2_tiles = [OpenGeoTile(code) for code in surrounding_x2_codes]
+    manual_x2_TileArea = TileArea(berkeley_tile_list + surrounding_tiles + surrounding_x2_tiles)
+
+    berkeley_TileArea.expandTileArea(TileSize.DISTRICT, num_of_tiles=2)
+
+    assert  {t.getTileAddress() for t in berkeley_TileArea.tile_list} == {
+             t.getTileAddress() for t in manual_x2_TileArea.tile_list  }
 
 
+    ''' test expand by default units (1, pinpoint) '''
+    berkeley_TileArea = TileArea(berkeley_tile_list)
+    len_berk_start = len(berkeley_TileArea.tile_list)
+    print('len_berk_start:', len_berk_start)
 
 
+    top_left_code =     ['849VXM2X+2X']
+    top_codes =         [code+suffix for code in
+                                        [f'849VXP2{digit}+' for digit in CODE_ALPHABET]
+                                    for suffix in SOUTH_DIGITS]
+    top_right_code=     ['849VXQ22+22']
 
+    right_codes =       [code+suffix for code in
+                                        [f'849VWQ{digit}2+' for digit in CODE_ALPHABET]
+                                    +   [f'849VVQ{digit}2+' for digit in CODE_ALPHABET]
+                                     for suffix in WEST_DIGITS]
 
+    bottom_right_code=  ['849VRQX2+X2']
+    bottom_codes =      [code+suffix for code in
+                                        [f'849VRMX{digit}+' for digit in CODE_ALPHABET]
+                                    +   [f'849VRPX{digit}+' for digit in CODE_ALPHABET]
+                                    for suffix in NORTH_DIGITS]
+    bottom_left_code=   ['849VRJXX+XX']
+    left_codes =        [code+suffix for code in
+                                        [f'849VVJ{digit}X+' for digit in CODE_ALPHABET]
+                                    for suffix in EAST_DIGITS]
+    cutout_left_code=   ['849VWJ2X+2X']
+    cutout_bottom_codes=[code+suffix for code in
+                                        [f'849VWM2{digit}+' for digit in CODE_ALPHABET]
+                                    for suffix in SOUTH_DIGITS]
+    cutout_right_codes=[code+suffix for code in
+                                        [f'849VWM{digit}X+' for digit in CODE_ALPHABET]
+                                    for suffix in EAST_DIGITS]
+    border_codes  = set(top_left_code    + top_codes           + top_right_code +
+                     cutout_left_code + cutout_bottom_codes + cutout_right_codes +
+                     left_codes                             + right_codes +
+                     bottom_left_code + bottom_codes        + bottom_right_code)
+    border_tiles = [OpenGeoTile(code) for code in border_codes]
+    border_TileArea = TileArea(berkeley_tile_list + border_tiles)
 
+    berkeley_TileArea.expandTileArea(TileSize.PINPOINT) #num_of_tiles=1, tile_size=TileSize.PINPOINT
 
-
-
-
+    assert  {t.getTileAddress() for t in berkeley_TileArea.tile_list} == {
+             t.getTileAddress() for t in border_TileArea.tile_list  }
 
 
 

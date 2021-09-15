@@ -143,7 +143,7 @@ class TileArea():
          * object.
          * @param newTileArea another TileArea
          */'''
-        for newTile in newTileArea.getShortestCoveringTileList():
+        for newTile in newTileArea.tile_list:
             self.addTile(newTile, convert_to_shortest_covering_tile_list=False)
         self.tile_list = self.getShortestCoveringTileList()
 
@@ -203,6 +203,36 @@ class TileArea():
                         break
         return edge_tile_set
 
+    def expandTileArea(self, tile_size, num_of_tiles=1):
+        for i in range(num_of_tiles):
+            new_area = SimpleTileArea()
+            print('empty:', new_area.tile_list)
+            edge_tile_set = self.getEdgeTileSet()
+            print('len edge_tile_set:', len(edge_tile_set))
+            for tile in edge_tile_set:
+                print('tile:', tile.getTileAddress())
+                neighbors = tile.getNeighbors()
+                for neighbor in neighbors:
+                    if not self.contains(neighbor) and not new_area.contains(neighbor):
+                        print('neighbor:', neighbor.getTileAddress())
+                        if neighbor.tile_size == tile_size:
+                            if not self.contains(neighbor):
+                                ''' new_area.contains(neighbor) in add algo '''
+                                new_area.addTile(neighbor)
+                        else:
+                            direction = neighbor.getEightPointDirectionOfNeighbor(tile)
+                            print(
+                                '\nneighbor:', neighbor.getTileAddress(),
+                                '\nto tile:', tile.getTileAddress(),
+                                f'\n{direction}'
+                            )
+                            neighbor_subtiles = neighbor.returnSetOfBorderSubtiles(desired_tile_size=tile_size, eight_point_direction=direction)
+                            print('len neighbor subs:', len(neighbor_subtiles))
+                            for subtile in neighbor_subtiles:
+                                if not self.contains(neighbor):
+                                    ''' new_area.contains(neighbor) in add algo '''
+                                    new_area.addTile(subtile)
+            self.addTileArea(new_area)
 
 
 class SimpleTileArea(TileArea):

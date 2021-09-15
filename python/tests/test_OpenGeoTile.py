@@ -109,6 +109,7 @@ def test_getNeighbors_isNeighbor():
         assert manual_neighbor_list[index].code ==  peuget_sound.getNeighbors(
                                                         eight_point_direction=direction
                                                     )[0].code
+        assert direction == peuget_sound.getEightPointDirectionOfNeighbor(manual_neighbor_list[index])
 
     function_neighbor_list = peuget_sound.getNeighbors()
 
@@ -193,6 +194,77 @@ def test_returnSetOfBorderSubtiles():
 
     berkeley_border_tile_set = uc_berkeley_statium.returnSetOfBorderSubtiles()
     assert berkeley_border_address_verify == {tile.getTileAddress() for tile in berkeley_border_tile_set}
+
+    north_addresses = {address for address in berkeley_border_address_verify if address[-2] == 'X'}
+    east_addresses = {address for address in berkeley_border_address_verify if address[-1] == 'X'}
+    south_addresses = {address for address in berkeley_border_address_verify if address[-2] == '2'}
+    west_addresses = {address for address in berkeley_border_address_verify if address[-1] == '2'}
+
+    cardinal_address_list = [
+        north_addresses,
+        east_addresses,
+        south_addresses,
+        west_addresses,
+    ]
+
+    berkeley_border_north_set = uc_berkeley_statium.returnSetOfBorderSubtiles(eight_point_direction='N')
+    berkeley_border_east_set = uc_berkeley_statium.returnSetOfBorderSubtiles(eight_point_direction='E')
+    berkeley_border_south_set = uc_berkeley_statium.returnSetOfBorderSubtiles(eight_point_direction='S')
+    berkeley_border_west_set = uc_berkeley_statium.returnSetOfBorderSubtiles(eight_point_direction='W')
+
+    berkeley_border_set_list = [
+        berkeley_border_north_set,
+        berkeley_border_east_set,
+        berkeley_border_south_set,
+        berkeley_border_west_set,
+    ]
+
+    for index in range(len(cardinal_address_list)):
+        assert len(cardinal_address_list[index]) == 20
+        assert len(berkeley_border_set_list[index]) == 20
+        assert cardinal_address_list[index] == {tile.getTileAddress() for tile in berkeley_border_set_list[index]}
+
+    berkeley_NW_address_set = north_addresses & west_addresses
+    berkeley_NE_address_set = north_addresses & east_addresses
+    berkeley_SE_address_set = south_addresses & east_addresses
+    berkeley_SW_address_set = south_addresses & west_addresses
+
+    corner_address_list = [
+        berkeley_NW_address_set,
+        berkeley_NE_address_set,
+        berkeley_SE_address_set,
+        berkeley_SW_address_set,
+    ]
+
+    berkeley_corner_NW_set = uc_berkeley_statium.returnSetOfBorderSubtiles(eight_point_direction='NW')
+    berkeley_corner_NE_set = uc_berkeley_statium.returnSetOfBorderSubtiles(eight_point_direction='NE')
+    berkeley_corner_SE_set = uc_berkeley_statium.returnSetOfBorderSubtiles(eight_point_direction='SE')
+    berkeley_corner_SW_set = uc_berkeley_statium.returnSetOfBorderSubtiles(eight_point_direction='SW')
+
+    berkeley_corner_set_list = [
+        berkeley_corner_NW_set,
+        berkeley_corner_NE_set,
+        berkeley_corner_SE_set,
+        berkeley_corner_SW_set,
+    ]
+
+    for index in range(len(berkeley_corner_set_list)):
+        assert len(corner_address_list[index]) == 1
+        assert len(berkeley_corner_set_list[index]) == 1
+        assert corner_address_list[index] == {tile.getTileAddress() for tile in berkeley_corner_set_list[index]}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
