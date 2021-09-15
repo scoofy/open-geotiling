@@ -25,7 +25,7 @@ def test_new_SimpleTileArea_from_tile():
 def test_new_SimpleTileArea_from_list():
     san_francisco_SimpleTileArea = SimpleTileArea(san_francisco_tile_list)
     assert set(
-                [tile.getTileAddress() for tile in san_francisco_SimpleTileArea.tile_list]
+                [tile.getTileAddress() for tile in san_francisco_SimpleTileArea.tile_set]
             ) == set(
                 [tile.getTileAddress() for tile in san_francisco_tile_list]
             )
@@ -41,12 +41,13 @@ def test_getShortestCoveringTileList():
 
     assert len(de_Young_PINPOINT_plus_codes) == 20 * 20
     de_Young_SimpleTileArea = SimpleTileArea(de_Young_PINPOINT_plus_codes)
-    assert len(de_Young_SimpleTileArea.tile_list) == 20 * 20
+    assert len(de_Young_SimpleTileArea.tile_set) == 20 * 20
 
     western_coast_usa = OpenGeoTile('84000000+')
     de_Young_SimpleTileArea.addTile(western_coast_usa)
 
-    assert len(de_Young_SimpleTileArea.tile_list) == (20 * 20) + 1 and de_Young_SimpleTileArea.tile_list[-1].getTileAddress() == '84'
+    assert len(de_Young_SimpleTileArea.tile_set) == (20 * 20) + 1
+    assert '84' in {t.getTileAddress() for t in de_Young_SimpleTileArea.tile_set}
 
 def test_SimpleTileArea_contains():
     san_francisco_SimpleTileArea = SimpleTileArea(san_francisco_tile_list)
@@ -63,7 +64,6 @@ def test_SimpleTileArea_contains():
 def test_getSmallestTileSize():
     san_francisco_SimpleTileArea = SimpleTileArea(san_francisco_tile_list)
 
-    print( san_francisco_SimpleTileArea.tile_list[0].code, "san_francisco_SimpleTileArea.tile_list[0].code")
     assert san_francisco_SimpleTileArea.getSmallestTileSize() == TileSize.DISTRICT
     print("849VMGX2+")
     san_francisco_SimpleTileArea.addTile(OpenGeoTile("849VMGX2+"))
@@ -78,7 +78,7 @@ def test_getSmallestTileSize():
 def test_addTileArea():
     # standard addition
     san_francisco_SimpleTileArea = SimpleTileArea(san_francisco_tile_list)
-    sf_tile_list_num = len(san_francisco_SimpleTileArea.tile_list)
+    sf_tile_list_num = len(san_francisco_SimpleTileArea.tile_set)
     berkeley_codes = [
                      '849VWP00+',
         '849VVM00+', '849VVP00+',
@@ -86,12 +86,12 @@ def test_addTileArea():
     berkeley_tile_list = [OpenGeoTile(code) for code in berkeley_codes]
     berkeley_SimpleTileArea = SimpleTileArea(berkeley_tile_list)
     san_francisco_SimpleTileArea.addTileArea(berkeley_SimpleTileArea)
-    assert len(san_francisco_SimpleTileArea.tile_list) == sf_tile_list_num + len(berkeley_codes)
+    assert len(san_francisco_SimpleTileArea.tile_set) == sf_tile_list_num + len(berkeley_codes)
 
     # subsumptive addition
     western_usa = SimpleTileArea([OpenGeoTile('84000000+'), OpenGeoTile('85000000+')])
     san_francisco_SimpleTileArea.addTileArea(western_usa)
-    assert len(san_francisco_SimpleTileArea.tile_list) == sf_tile_list_num + len(berkeley_codes) + len(western_usa.tile_list)
+    assert len(san_francisco_SimpleTileArea.tile_set) == sf_tile_list_num + len(berkeley_codes) + len(western_usa.tile_set)
 
 
 def test_containsPlusCode():

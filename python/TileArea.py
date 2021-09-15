@@ -1,6 +1,7 @@
 from openlocationcode import openlocationcode as olc
 from OpenGeoTile import OpenGeoTile, TileSize
 from operator import methodcaller
+from collections.abc import Iterable
 import pprint
 pp = pprint.pformat
 
@@ -8,7 +9,7 @@ class TileArea():
     '''/**
      * An area defined by one or more {@link OpenGeoTile} tiles
     */'''
-    def __init__(self, tile_list):
+    def __init__(self, tile_or_tile_iterable):
         '''/**
          * default constructor
          */'''
@@ -17,17 +18,18 @@ class TileArea():
          * Construct a TileArea from a list of tiles.
          * @param tiles an ArrayList of tiles that should be added to this object
         */'''
-        if not isinstance(tile_list, (list, OpenGeoTile)):
+        if not isinstance(tile_or_tile_iterable, (Iterable, OpenGeoTile)):
             raise Exception("New TileArea must contain valid OpenGeoTile tiles")
 
-        self.tile_list = []
-        if isinstance(tile_list, OpenGeoTile):
-            tile_list = [tile_list]
-        for newTile in tile_list:
-            self.addTile(newTile, convert_to_shortest_covering_tile_list=False)
-        self.tile_list = self.getShortestCoveringTileList()
+        if isinstance(tile_or_tile_iterable, OpenGeoTile):
+            tile_or_tile_iterable = set([tile_or_tile_iterable])
 
-    def getShortestCoveringTileList(self):
+        self.tile_set = set()
+        for newTile in tile_or_tile_iterable:
+            self.addTile(newTile, convert_to_shortest_covering_tile_set=False)
+        self.tile_set = self.getShortestCoveringTileSet()
+
+    def getShortestCoveringTileSet(self):
         '''/**
          * Get a list of tiles that fully cover this TileArea as currently defined. Note that this is
          * not necessarily the same list that went into this object over time. In case of a contiguous
@@ -35,7 +37,7 @@ class TileArea():
          * @return an ArrayList of {@link OpenGeoTile} tiles which fully cover the area of this TileArea
         */'''
         # get address set list
-        existing_address_list_unsorted = list(set([tile.getTileAddress() for tile in self.tile_list]))
+        existing_address_list_unsorted = [tile.getTileAddress() for tile in self.tile_set]
 
         # filter out tiles subsumed in bigger tiles
         existing_address_list_without_subsumption = []
@@ -73,22 +75,22 @@ class TileArea():
             address_dict = self.recursiveShortestCoveringTileDictBuilder(address, address_dict)
         #print("address_dict:", pp(address_dict))
 
-        shortest_covering_tile_list = []
-        for parent, child_list in address_dict.items():
-            for child in child_list:
+        shortest_covering_tile_set = set()
+        for parent, child_set in address_dict.items():
+            for child in child_set:
                 full_address = parent + child
-                shortest_covering_tile_list.append(OpenGeoTile(code=full_address))
-        return shortest_covering_tile_list
+                shortest_covering_tile_set.add(OpenGeoTile(code=full_address))
+        return shortest_covering_tile_set
 
     def recursiveShortestCoveringTileDictBuilder(self, tile_address, address_dict):
             parent, child = tile_address[:-2],  tile_address[-2:]
-            child_list = address_dict.get(parent, [])
-            child_list.append(child)
-            if len(child_list) == 20*20: # if full tile
+            child_set = address_dict.get(parent, set())
+            child_set.add(child)
+            if len(child_set) == 20*20: # if full tile
                 del address_dict[parent]
                 return self.recursiveShortestCoveringTileDictBuilder(parent, address_dict)
             else:
-                address_dict[parent] = child_list
+                address_dict[parent] = child_set
                 return address_dict
 
     def contains(self, tile):
@@ -98,7 +100,7 @@ class TileArea():
          * @param tile an OpenGeoTile, the area of which will be checked
          * @return true if the whole area of {@code tile} is inside this object's area, false if not
         */'''
-        for existing_tile in self.tile_list:
+        for existing_tile in self.tile_set:
             if existing_tile.contains(tile):
                 return True
         return False
@@ -111,21 +113,21 @@ class TileArea():
          * @return the smallest tile size (=longest address) used by one of the tiles of this area
         */'''
         # sorting by getTileAddress, reversed, so the longest address is first, which is the smallest tile
-        smallest_tile = sorted(self.tile_list, key=lambda x: len(x.getTileAddress()), reverse=True)[0]
+        smallest_tile = sorted(list(self.tile_set), key=lambda x: len(x.getTileAddress()), reverse=True)[0]
         return smallest_tile.getTileSize()
 
-    def addNonContainedTile(self, nonContainedTile, convert_to_shortest_covering_tile_list=True):
+    def addNonContainedTile(self, nonContainedTile, convert_to_shortest_covering_tile_set=True):
         '''/**
          * Package-private method to add a code that has already been checked to NOT be contained yet.
          * @param newTile a full OpenGeoTile, the area of which will be added to this object's area
         */'''
         if not isinstance(nonContainedTile, OpenGeoTile):
             raise Exception("New TileArea must contain valid OpenGeoTile tiles")
-        self.tile_list.append(nonContainedTile)
-        if convert_to_shortest_covering_tile_list:
-            self.tile_list = self.getShortestCoveringTileList()
+        self.tile_set.add(nonContainedTile)
+        if convert_to_shortest_covering_tile_set:
+            self.tile_set = self.getShortestCoveringTileSet()
 
-    def addTile(self, newTile, convert_to_shortest_covering_tile_list=True):
+    def addTile(self, newTile, convert_to_shortest_covering_tile_set=True):
         '''/**
          * Adds the area defined by the {@link OpenGeoTile} newTile to the area represented by this
          * object. Subsequent calls to {@link #contains(OpenGeoTile)} must return true for the
@@ -135,7 +137,7 @@ class TileArea():
         if not isinstance(newTile, OpenGeoTile):
             raise Exception("New TileArea must contain valid OpenGeoTile tiles")
         if not self.contains(newTile):
-            self.addNonContainedTile(newTile, convert_to_shortest_covering_tile_list=convert_to_shortest_covering_tile_list)
+            self.addNonContainedTile(newTile, convert_to_shortest_covering_tile_set=convert_to_shortest_covering_tile_set)
 
     def addTileArea(self, newTileArea):
         '''/**
@@ -143,9 +145,9 @@ class TileArea():
          * object.
          * @param newTileArea another TileArea
          */'''
-        for newTile in newTileArea.tile_list:
-            self.addTile(newTile, convert_to_shortest_covering_tile_list=False)
-        self.tile_list = self.getShortestCoveringTileList()
+        for newTile in newTileArea.tile_set:
+            self.addTile(newTile, convert_to_shortest_covering_tile_set=False)
+        self.tile_set = self.getShortestCoveringTileSet()
 
     def containsPlusCode(self, plus_code):
         '''/**
@@ -169,7 +171,7 @@ class TileArea():
         edge_addresses = set()
         contained_addresses = set()
         external_addresses = set()
-        for tile in self.tile_list:
+        for tile in self.tile_set:
             tile_is_edge = False
             if tile.tile_size.getCodeLength() != TileSize.PINPOINT.getCodeLength():
                 border_subtile_set = tile.returnSetOfBorderSubtiles()
@@ -195,7 +197,7 @@ class TileArea():
                                 tile_is_edge = True
                                 break
         edge_tile_set = set()
-        for tile in self.tile_list:
+        for tile in self.tile_set:
             if not tile in edge_tile_set:
                 for address in edge_addresses:
                     if address.startswith(tile.getTileAddress()):
@@ -206,7 +208,7 @@ class TileArea():
     def expandTileArea(self, tile_size, num_of_tiles=1):
         for i in range(num_of_tiles):
             new_area = SimpleTileArea()
-            print('empty:', new_area.tile_list)
+            print('empty:', new_area.tile_set)
             edge_tile_set = self.getEdgeTileSet()
             print('len edge_tile_set:', len(edge_tile_set))
             for tile in edge_tile_set:
@@ -235,6 +237,7 @@ class TileArea():
             self.addTileArea(new_area)
 
 
+
 class SimpleTileArea(TileArea):
     '''/**
      * Simplest implementation of {@link TileArea} possible. This just collects all tiles that are added
@@ -245,13 +248,13 @@ class SimpleTileArea(TileArea):
     ''' because the tile areas don't merge, this will be inherently ineffecient
         larger tiles will contain smaller tiles, but they will be redundant
     '''
-    def __init__(self, tile_list=[]):
+    def __init__(self, tile_set=set()):
         self.smallestTileSize = TileSize.GLOBAL
-        super().__init__(tile_list)
+        super().__init__(tile_set)
 
 
-    def addNonContainedTile(self, newTile, convert_to_shortest_covering_tile_list=False):
-        self.tile_list.append(newTile)
+    def addNonContainedTile(self, newTile, convert_to_shortest_covering_tile_set=False):
+        self.tile_set.add(newTile)
         if newTile.getTileSize().getCodeLength() > self.smallestTileSize.getCodeLength():
             self.smallestTileSize = newTile.getTileSize()
 
@@ -260,13 +263,13 @@ class SimpleTileArea(TileArea):
 
 
     def contains(self, tile):
-        for memberTile in self.tile_list:
+        for memberTile in self.tile_set:
             if memberTile.contains(tile):
                 return True
         return False
 
-    def getShortestCoveringTileList(self):
-        return self.tile_list
+    def getShortestCoveringTileSet(self):
+        return self.tile_set
 
 
 

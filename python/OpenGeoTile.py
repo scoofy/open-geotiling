@@ -122,6 +122,7 @@ class OpenGeoTile():
                 self.constructTileFromTileAddress(code)
             else:
                 self.constructTileFromCode(code)
+        self.tile_address = self.code.replace(SEPARATOR, "")[0: self.tile_size.getCodeLength()]
 
 
     def constructTileFromCode(self, plus_code):
@@ -259,8 +260,7 @@ class OpenGeoTile():
         * number of '0' and '+' characters. Example: Address "CVXW" corresponds to OLC "CVXW0000+"
         * @return the tile address of this OpenGeoTile;
          */'''
-        intermediate = self.code.replace(SEPARATOR, "")
-        return intermediate[0: self.tile_size.getCodeLength()]
+        return self.tile_address
 
     def getTileAddressPrefix(self):
         '''/**
@@ -272,6 +272,8 @@ class OpenGeoTile():
             return ""
         else:
             return self.getTileAddress()[0: self.tile_size.getCodeLength()-2]
+    def getParentTileAddress(self):
+        return self.getTileAddressPrefix()
 
     def getTileOpenLocationCode(self):
         # this code is redundant
@@ -320,7 +322,7 @@ class OpenGeoTile():
             uppercase_input_directions = [d.upper() for d in eight_point_direction]
             directions = [direction for direction in directions_list if direction in uppercase_input_directions]
 
-        neighbors = []
+        neighbors = set()
         for direction in directions:
             lat_diff, long_diff = direction_dict.get(direction)
             ''' //OLC constructor clips and normalizes,
@@ -331,7 +333,7 @@ class OpenGeoTile():
             new_OpenGeoTile = OpenGeoTile(lat=neighborLatitude, long=neighborLongitude, tile_size=self.getTileSize())
             if not self.isSameTile(new_OpenGeoTile):
                 '''//don't add tiles that are the same as this one due to clipping near the poles'''
-                neighbors.append(new_OpenGeoTile)
+                neighbors.add(new_OpenGeoTile)
 
         return neighbors
 

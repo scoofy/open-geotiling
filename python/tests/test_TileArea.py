@@ -32,7 +32,7 @@ def test_new_TileArea_from_tile():
 def test_new_TileArea_from_list():
     san_francisco_TileArea = TileArea(san_francisco_tile_list)
     assert set(
-                [tile.getTileAddress() for tile in san_francisco_TileArea.tile_list]
+                [tile.getTileAddress() for tile in san_francisco_TileArea.tile_set]
             ) == set(
                 [tile.getTileAddress() for tile in san_francisco_tile_list]
             )
@@ -48,12 +48,13 @@ def test_getShortestCoveringTileList():
 
     assert len(de_Young_PINPOINT_plus_codes) == 20 * 20
     de_Young_TileArea = TileArea(de_Young_PINPOINT_plus_codes)
-    assert len(de_Young_TileArea.tile_list) == 1
+    assert len(de_Young_TileArea.tile_set) == 1
 
     western_coast_usa = OpenGeoTile('84000000+')
     de_Young_TileArea.addTile(western_coast_usa)
 
-    assert len(de_Young_TileArea.tile_list) == 1 and de_Young_TileArea.tile_list[0].getTileAddress() == '84'
+    assert len(de_Young_TileArea.tile_set) == 1
+    assert '84' in {t.getTileAddress() for t in de_Young_TileArea.tile_set}
 
 def test_TileArea_contains():
     san_francisco_TileArea = TileArea(san_francisco_tile_list)
@@ -70,7 +71,6 @@ def test_TileArea_contains():
 def test_getSmallestTileSize():
     san_francisco_TileArea = TileArea(san_francisco_tile_list)
 
-    print( san_francisco_TileArea.tile_list[0].code, "san_francisco_TileArea.tile_list[0].code")
     assert san_francisco_TileArea.getSmallestTileSize() == TileSize.DISTRICT
     print("849VMGX2+")
     san_francisco_TileArea.addTile(OpenGeoTile("849VMGX2+"))
@@ -86,7 +86,7 @@ def test_getSmallestTileSize():
 def test_addTileArea():
     # standard addition
     san_francisco_TileArea = TileArea(san_francisco_tile_list)
-    sf_tile_list_num = len(san_francisco_TileArea.tile_list)
+    sf_tile_list_num = len(san_francisco_TileArea.tile_set)
     berkeley_codes = [
                      '849VWP00+',
         '849VVM00+', '849VVP00+',
@@ -94,12 +94,12 @@ def test_addTileArea():
     berkeley_tile_list = [OpenGeoTile(code) for code in berkeley_codes]
     berkeley_TileArea = TileArea(berkeley_tile_list)
     san_francisco_TileArea.addTileArea(berkeley_TileArea)
-    assert len(san_francisco_TileArea.tile_list) == sf_tile_list_num + len(berkeley_codes)
+    assert len(san_francisco_TileArea.tile_set) == sf_tile_list_num + len(berkeley_codes)
 
     # subsumptive addition
     western_usa = TileArea([OpenGeoTile('84000000+'), OpenGeoTile('85000000+')])
     san_francisco_TileArea.addTileArea(western_usa)
-    assert len(san_francisco_TileArea.tile_list) == len(western_usa.tile_list)
+    assert len(san_francisco_TileArea.tile_set) == len(western_usa.tile_set)
 
 
 def test_containsPlusCode():
@@ -161,8 +161,8 @@ def test_expandTileArea():
 
     berkeley_TileArea.expandTileArea(TileSize.DISTRICT)
 
-    assert  {t.getTileAddress() for t in berkeley_TileArea.tile_list} == {
-             t.getTileAddress() for t in manual_TileArea.tile_list  }
+    assert  {t.getTileAddress() for t in berkeley_TileArea.tile_set} == {
+             t.getTileAddress() for t in manual_TileArea.tile_set  }
 
     ''' test expand by 2 same size units '''
     berkeley_TileArea = TileArea(berkeley_tile_list)
@@ -180,13 +180,13 @@ def test_expandTileArea():
 
     berkeley_TileArea.expandTileArea(TileSize.DISTRICT, num_of_tiles=2)
 
-    assert  {t.getTileAddress() for t in berkeley_TileArea.tile_list} == {
-             t.getTileAddress() for t in manual_x2_TileArea.tile_list  }
+    assert  {t.getTileAddress() for t in berkeley_TileArea.tile_set} == {
+             t.getTileAddress() for t in manual_x2_TileArea.tile_set  }
 
 
     ''' test expand by default units (1, pinpoint) '''
     berkeley_TileArea = TileArea(berkeley_tile_list)
-    len_berk_start = len(berkeley_TileArea.tile_list)
+    len_berk_start = len(berkeley_TileArea.tile_set)
     print('len_berk_start:', len_berk_start)
 
 
@@ -226,8 +226,8 @@ def test_expandTileArea():
 
     berkeley_TileArea.expandTileArea(TileSize.PINPOINT) #num_of_tiles=1, tile_size=TileSize.PINPOINT
 
-    assert  {t.getTileAddress() for t in berkeley_TileArea.tile_list} == {
-             t.getTileAddress() for t in border_TileArea.tile_list  }
+    assert  {t.getTileAddress() for t in berkeley_TileArea.tile_set} == {
+             t.getTileAddress() for t in border_TileArea.tile_set  }
 
 
 

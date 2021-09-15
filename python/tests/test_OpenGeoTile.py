@@ -104,11 +104,19 @@ def test_getNeighbors_isNeighbor():
         olympic_nat_park,
     ]
 
-    eight_point_dirctions = ['NW', 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W']
-    for index, direction in enumerate(eight_point_dirctions):
-        assert manual_neighbor_list[index].code ==  peuget_sound.getNeighbors(
-                                                        eight_point_direction=direction
-                                                    )[0].code
+    eight_point_directions = ['NW', 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W']
+    manual_set= {x.code for x in manual_neighbor_list}
+    print('manual_set:', manual_set)
+    pueget_set = set()
+    for direction in eight_point_directions:
+        peuget_neighbors = peuget_sound.getNeighbors(eight_point_direction=direction)
+        for neighbor in peuget_neighbors:
+            pueget_set.add(neighbor.code)
+    print('pueget_set:', pueget_set)
+    difference = manual_set.difference(pueget_set)
+    print('difference:', difference)
+    assert not difference
+    for index, direction in enumerate(eight_point_directions):
         assert direction == peuget_sound.getEightPointDirectionOfNeighbor(manual_neighbor_list[index])
 
     function_neighbor_list = peuget_sound.getNeighbors()
