@@ -1,7 +1,6 @@
 from openlocationcode import openlocationcode as olc
 from enum import Enum
 import math, re
-import pysnooper
 
 class TileSize(Enum):
     ''' An area of 20° x 20°. The side length of this tile varies with its location on the globe,
