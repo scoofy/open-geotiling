@@ -1,6 +1,6 @@
 from openlocationcode import openlocationcode as olc
 from enum import Enum
-import math
+import math, re
 import pysnooper
 
 class TileSize(Enum):
@@ -56,6 +56,13 @@ NORTH_DIGITS = {x for x in BASE_20_BORDER_SET if x[0] == 'X'}
 EAST_DIGITS = {x for x in BASE_20_BORDER_SET if x[1] == 'X'}
 SOUTH_DIGITS = {x for x in BASE_20_BORDER_SET if x[0] == '2'}
 WEST_DIGITS = {x for x in BASE_20_BORDER_SET if x[1] == '2'}
+memoized_digit_dict = {
+    "N1": NORTH_DIGITS,
+    "E1": EAST_DIGITS,
+    "S1": SOUTH_DIGITS,
+    "W1": WEST_DIGITS,
+}
+
 
 def is_padded(plus_code):
     return plus_code.find(PADDING_CHARACTER) != -1
@@ -78,14 +85,11 @@ def return_code_of_tile_size(too_precise_plus_code, desired_tile_size):
     return code
 
 def return_set_of_subaddresses(set_of_addresses):
-    set_to_return = set()
     for address in set_of_addresses:
         if len(address) == TileSize.PINPOINT.getCodeLength():
             ''' address already minimum possible size '''
             return None
-        for base in BASE_20_SET:
-            set_to_return.add(address + base)
-    return set_to_return
+    return {address+base for address in set_of_addresses for base in BASE_20_SET}
 
 class OpenGeoTile():
     '''
@@ -565,7 +569,7 @@ class OpenGeoTile():
             'desired_tile_size is too big'
             raise Exception("OLC padding larger than allowed by desired_tile_size")
 
-        iterations_needed = desired_tile_size.getCodeLength()/2 - self.tile_size.getCodeLength()/2
+        iterations_needed = int(desired_tile_size.getCodeLength()/2 - self.tile_size.getCodeLength()/2)
 
         north_set = set()
         east_set = set()
@@ -575,38 +579,96 @@ class OpenGeoTile():
         if isinstance(eight_point_direction, str):
             eight_point_direction = eight_point_direction.upper()
 
-        immutable_digit_dict = {
-            "N": NORTH_DIGITS,
-            "E": EAST_DIGITS,
-            "S": SOUTH_DIGITS,
-            "W": WEST_DIGITS,
-        }
-
         set_of_border_subaddresses = set()
         if eight_point_direction is None:
             ''' all borders '''
-            for immutable_direction_digit_set in immutable_digit_dict.values():
-                set_to_add = {address + x for x in immutable_direction_digit_set}
-                for i in range(int(iterations_needed) - 1):
-                    set_to_add = {x+y for x in set_to_add for y in immutable_direction_digit_set}
-                set_of_border_subaddresses = set_of_border_subaddresses.union(set_to_add)
+            ''' traveling salesman problem '''
+            ''' let's do it once, and try to reduce by swaping digits '''
+            all_border_set = memoized_digit_dict.get(f"A{iterations_needed}")
+            if not all_border_set:
+                north_base_set = memoized_digit_dict.get(f"N{iterations_needed}")
+                if not north_base_set:
+                    self.memoizeDigitDict("N", iterations_needed)
+
+
+                north_set = memoized_digit_dict.get(f"N{iterations_needed}")
+                east_set = memoized_digit_dict.get(f"E{iterations_needed}", set())
+                south_set = memoized_digit_dict.get(f"S{iterations_needed}", set())
+                west_set = memoized_digit_dict.get(f"W{iterations_needed}", set())
+                east_exists = east_set != set()
+                south_exists = south_set != set()
+                west_exists = west_set != set()
+                for base in north_set:
+                    east_base = ""
+                    south_base = ""
+                    west_base = ""
+                    base_tuple_list = re.findall('..', base)
+                    ''' north will be   Xd
+                        east            dX
+                        south           2d
+                        west            d2'''
+                    for n_tuple in base_tuple_list:
+                        relevant_digit = n_tuple[1]
+                        if not east_exists:
+                            east_base += relevant_digit + "X"
+                        if not south_exists:
+                            south_base += "2" + relevant_digit
+                        if not west_exists:
+                            west_base += relevant_digit + "2"
+                    if not east_exists:
+                        east_set.add(east_base)
+                    if not south_exists:
+                        south_set.add(south_base)
+                    if not west_exists:
+                        west_set.add(west_base)
+                memoized_digit_dict[f"E{iterations_needed}"] = east_set
+                memoized_digit_dict[f"S{iterations_needed}"] = south_set
+                memoized_digit_dict[f"W{iterations_needed}"] = west_set
+                all_border_set = north_set | east_set | south_set | west_set
+                memoized_digit_dict[f"A{iterations_needed}"] = all_border_set
+            return {OpenGeoTile(address+base) for base in all_border_set}
+
         elif len(eight_point_direction) == 1:
             ''' North, South, East, or West '''
-            immutable_direction_digit_set = immutable_digit_dict.get(eight_point_direction)
-            set_to_add = {address + x for x in immutable_direction_digit_set}
-            for i in range(int(iterations_needed) - 1):
-                set_to_add = {x+y for x in set_to_add for y in immutable_direction_digit_set}
-            set_of_border_subaddresses = set_to_add
+            base_set = memoized_digit_dict.get(f"{eight_point_direction}{iterations_needed}")
+            if not base_set:
+                self.memoizeDigitDict(eight_point_direction, iterations_needed)
+
+            base_set = memoized_digit_dict.get(f'{eight_point_direction}{iterations_needed}')
+            return {OpenGeoTile(address + base) for base in base_set}
         elif len(eight_point_direction) == 2:
             ''' NW, NE, SW, SE... should return only one tile'''
-            relevant_set = immutable_digit_dict.get(eight_point_direction[0]) & immutable_digit_dict.get(eight_point_direction[1])
-            ''' this relevant_set should just be len(1)'''
-            direction_suffix = relevant_set.pop()
-            set_to_add = {address + direction_suffix}
-            for i in range(int(iterations_needed) - 1):
-                set_to_add = {x+direction_suffix for x in set_to_add}
-            set_of_border_subaddresses = set_to_add
-        return {OpenGeoTile(x) for x in set_of_border_subaddresses}
+            ordinal_digit_dict = {
+                'NW': 'X2',
+                'NE': 'XX',
+                'SE': '2X',
+                'SW': '22'
+            }
+            base = ''
+            for i in range(iterations_needed):
+                base += ordinal_digit_dict.get(eight_point_direction)
+            return {OpenGeoTile(address + base)}
+
+
+    def memoizeDigitDict(self, eight_point_direction, iterations_needed):
+        base_set = memoized_digit_dict.get(f"{eight_point_direction}{iterations_needed}")
+        if not base_set:
+            quickest_i = 0
+            for i in reversed(range(iterations_needed)):
+                if memoized_digit_dict.get(f"{eight_point_direction}{i + 1}"):
+                    quickest_i = i
+                    break
+            for i in range(quickest_i, iterations_needed):
+                existing_bases = memoized_digit_dict.get(f"{eight_point_direction}{i + 1}")
+                next_set = {existing_base + base for existing_base in existing_bases for base in memoized_digit_dict.get(f"{eight_point_direction}1")}
+                memoized_digit_dict[f"{eight_point_direction}{i + 2}"] = next_set
+
+
+
+
+
+
+
 
 
 

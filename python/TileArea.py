@@ -5,6 +5,7 @@ from collections.abc import Iterable
 import pprint
 pp = pprint.pformat
 
+
 class TileArea():
     '''/**
      * An area defined by one or more {@link OpenGeoTile} tiles
@@ -40,6 +41,70 @@ class TileArea():
         existing_address_list_unsorted = [tile.getTileAddress() for tile in self.tile_set]
 
         # filter out tiles subsumed in bigger tiles
+        ''' this should be parent tile in set '''
+        address_set = {t.getTileAddress() for t in self.tile_set}
+        tile_set_to_return = self.tile_set.copy()
+        for tile in self.tile_set:
+            relevant_address = tile.getTileAddress()
+            ''' here we shrink the tile address by 2 until it's an empty string '''
+            for i in range(int(len(relevant_address)/2)):
+                if tile in tile_set_to_return:
+                    relevant_address = relevant_address[0: len(relevant_address)-2]
+                    if relevant_address in address_set:
+                        tile_set_to_return.remove(tile)
+        '''
+            check if any tiles can be eliminate just by set of parents
+        '''
+        sub_global_parent_list = [t.getParentTileAddress() for t in tile_set_to_return if len(t.getTileAddress()) != 2]
+        counted_set = set()
+        reduce = False
+        for p_address in sub_global_parent_list:
+            if not p_address in counted_set:
+                if sub_global_parent_list.count(p_address) == 20*20:
+                    reduce = True
+                    break
+                else:
+                    counted_set.add(p_address)
+        if not reduce:
+            return tile_set_to_return
+
+        ''' reduce '''
+        pinpoints = {t for t in self.tile_set if len(t.getTileAddress()) == TileSize.PINPOINT.getCodeLength()}
+        neighborhoods = {t for t in self.tile_set if len(t.getTileAddress()) == TileSize.NEIGHBORHOOD.getCodeLength()}
+        districts = {t for t in self.tile_set if len(t.getTileAddress()) == TileSize.DISTRICT.getCodeLength()}
+        regions = {t for t in self.tile_set if len(t.getTileAddress()) == TileSize.REGION.getCodeLength()}
+        global_set = {t for t in self.tile_set if len(t.getTileAddress()) == TileSize.GLOBAL.getCodeLength()}
+
+        pinpoints,     neighborhoods = self.reduceTileSet(pinpoints,     neighborhoods)
+        print('pinpoints:', {t.getTileAddress() for t in pinpoints})
+        neighborhoods, districts     = self.reduceTileSet(neighborhoods, districts)
+        print('neighborhoods:', {t.getTileAddress() for t in neighborhoods})
+        districts,     regions       = self.reduceTileSet(districts,     regions)
+        print('districts:', {t.getTileAddress() for t in districts})
+        regions,       global_set    = self.reduceTileSet(regions,       global_set)
+        print('regions:', {t.getTileAddress() for t in regions})
+        print('global_set:', {t.getTileAddress() for t in global_set})
+
+        tile_set_to_return = pinpoints | neighborhoods | districts | regions | global_set
+        print('tile_set_to_return:', {t.getTileAddress() for t in tile_set_to_return})
+        return tile_set_to_return
+
+    def reduceTileSet(self, set_of_tiles_by_address_size, parent_address_set):
+        list_of_tiles = list(set_of_tiles_by_address_size.copy())
+        counted_set = set()
+        for tile in list_of_tiles:
+            if tile.getParentTileAddress() not in counted_set:
+                parent_addresses = [t.getParentTileAddress() for t in set_of_tiles_by_address_size]
+                if parent_addresses.count(tile.getParentTileAddress()) == 20*20:
+                    new_tile = OpenGeoTile(tile.getParentTileAddress())
+                    parent_address_set.add(new_tile)
+                    offending_tiles = {t for t in list_of_tiles if t.getTileAddress().startswith(tile.getParentTileAddress())}
+                    for offending_tile in offending_tiles:
+                        set_of_tiles_by_address_size.remove(offending_tile)
+                counted_set.add(tile.getParentTileAddress())
+        return set_of_tiles_by_address_size, parent_address_set
+
+        '''
         existing_address_list_without_subsumption = []
         existing_address_list_shortest_to_longest = sorted(existing_address_list_unsorted, key=len)
         for unfiltered_address in existing_address_list_shortest_to_longest:
@@ -51,10 +116,10 @@ class TileArea():
                             tile_is_subtile = True
             if not tile_is_subtile:
                 existing_address_list_without_subsumption.append(unfiltered_address)
-
+        '''
 
         # sort from biggest tiles to smallest
-        existing_address_list_longest_to_shortest = sorted(existing_address_list_without_subsumption, key=len, reverse=True)
+        # existing_address_list_longest_to_shortest = sorted(existing_address_list_without_subsumption, key=len, reverse=True)
         '''
         create dict like this:
         take the last two digits, and split off their parent,
@@ -69,6 +134,7 @@ class TileArea():
             "22": ["22", "33"... etc],
 
         }'''
+        '''
         address_dict = {}
         for address in existing_address_list_longest_to_shortest:
             #print("address:", address)
@@ -81,7 +147,7 @@ class TileArea():
                 full_address = parent + child
                 shortest_covering_tile_set.add(OpenGeoTile(code=full_address))
         return shortest_covering_tile_set
-
+        '''
     def recursiveShortestCoveringTileDictBuilder(self, tile_address, address_dict):
             parent, child = tile_address[:-2],  tile_address[-2:]
             child_set = address_dict.get(parent, set())

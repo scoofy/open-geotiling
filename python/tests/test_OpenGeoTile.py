@@ -176,12 +176,11 @@ def test_returnSetOfSubtiles():
     seattle_address = '84VVJM'
     seattle_address_subset = set()
     seattle_address_double_subset = set()
-    for base in BASE_20_SET:
-        seattle_address_subset.add(seattle_address + base)
-        for subbase in BASE_20_SET:
-            seattle_address_double_subset.add(seattle_address + base + subbase)
+    seattle_address_subset = {seattle_address + base for base in BASE_20_SET}
+    seattle_address_double_subset = {address + base for address in seattle_address_subset for base in BASE_20_SET}
 
     assert len(seattle_address_subset) == 20 * 20
+    assert len(seattle_address_double_subset) == 20 * 20 * 20 * 20
 
     seattle = OpenGeoTile('84VVJM00+')
 
