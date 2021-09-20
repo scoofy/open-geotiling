@@ -2,6 +2,7 @@ from openlocationcode import openlocationcode as olc
 from OpenGeoTile import OpenGeoTile, TileSize
 from operator import methodcaller
 from collections.abc import Iterable
+import re
 import pprint
 pp = pprint.pformat
 
@@ -302,7 +303,38 @@ class TileArea():
                                     new_area.addTile(subtile)
             self.addTileArea(new_area)
 
+def add_one_vertical_digit(tile_address):
+    digit_ref = {
+        "GLOBAL": TileSize.GLOBAL.getCodeLength()
+    }
+    tile_len         = len(tile_address)
+    global_len       = TileSize.GLOBAL.getCodeLength()
+    region_len       = TileSize.REGION.getCodeLength()
+    district_len     = TileSize.DISTRICT.getCodeLength()
+    neighborhood_len = TileSize.NEIGHBORHOOD.getCodeLength()
+    pinpoint_len     = TileSize.PINPOINT.getCodeLength()
 
+    global_digits = tile_address[0: global_len]
+
+    if tile_len >= region_len:
+        region_digits = tile_address[global_len: region_len]
+    else:
+        region_digits = None
+
+    if tile_len >= district_len:
+        district_digits = tile_address[region_len: district_len]
+    else:
+        district_digits = None
+
+    if tile_len >= neighborhood_len:
+        neighborhood_digits = tile_address[district_len: neighborhood_len]
+    else:
+        neighborhood_digits = None
+
+    if tile_len >= pinpoint_len:
+        pinpoint_digits = tile_address[neighborhood_len: pinpoint_len]
+    else:
+        pinpoint_digits = None
 
 class SimpleTileArea(TileArea):
     '''/**
