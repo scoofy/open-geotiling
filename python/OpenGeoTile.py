@@ -49,7 +49,18 @@ PADDING_2 = "00"
 PADDING_4 = "0000"
 PADDING_6 = "000000"
 CODE_ALPHABET = olc.CODE_ALPHABET_
-
+BASE_20_SET = {x+y for x in CODE_ALPHABET for y in CODE_ALPHABET}
+BASE_20_BORDER_SET = {x for x in BASE_20_SET if x[0] in ['2', 'X'] or x[1] in ['2', 'X']}
+NORTH_DIGITS = {x for x in BASE_20_BORDER_SET if x[0] == 'X'}
+EAST_DIGITS = {x for x in BASE_20_BORDER_SET if x[1] == 'X'}
+SOUTH_DIGITS = {x for x in BASE_20_BORDER_SET if x[0] == '2'}
+WEST_DIGITS = {x for x in BASE_20_BORDER_SET if x[1] == '2'}
+memoized_digit_dict = {
+    "N1": NORTH_DIGITS,
+    "E1": EAST_DIGITS,
+    "S1": SOUTH_DIGITS,
+    "W1": WEST_DIGITS,
+}
 
 
 def is_padded(plus_code):
@@ -73,7 +84,6 @@ def return_code_of_tile_size(too_precise_plus_code, desired_tile_size):
     return code
 
 def return_set_of_subaddresses(set_of_addresses):
-    BASE_20_SET = {x+y for x in CODE_ALPHABET for y in CODE_ALPHABET}
     for address in set_of_addresses:
         if len(address) == TileSize.PINPOINT.getCodeLength():
             ''' address already minimum possible size '''
@@ -549,20 +559,6 @@ class OpenGeoTile():
         return tile_set
 
     def returnSetOfBorderSubtiles(self, desired_tile_size=TileSize.PINPOINT, eight_point_direction=None):
-        BASE_20_SET = {x+y for x in CODE_ALPHABET for y in CODE_ALPHABET}
-        BASE_20_BORDER_SET = {x for x in BASE_20_SET if x[0] in ['2', 'X'] or x[1] in ['2', 'X']}
-        NORTH_DIGITS = {x for x in BASE_20_BORDER_SET if x[0] == 'X'}
-        EAST_DIGITS = {x for x in BASE_20_BORDER_SET if x[1] == 'X'}
-        SOUTH_DIGITS = {x for x in BASE_20_BORDER_SET if x[0] == '2'}
-        WEST_DIGITS = {x for x in BASE_20_BORDER_SET if x[1] == '2'}
-        memoized_digit_dict = {
-            "N1": NORTH_DIGITS,
-            "E1": EAST_DIGITS,
-            "S1": SOUTH_DIGITS,
-            "W1": WEST_DIGITS,
-        }
-
-
         address = self.getTileAddress()
 
         if len(address) == TileSize.PINPOINT.getCodeLength():
@@ -654,20 +650,6 @@ class OpenGeoTile():
 
 
     def memoizeDigitDict(self, eight_point_direction, iterations_needed):
-        BASE_20_SET = {x+y for x in CODE_ALPHABET for y in CODE_ALPHABET}
-        BASE_20_BORDER_SET = {x for x in BASE_20_SET if x[0] in ['2', 'X'] or x[1] in ['2', 'X']}
-        NORTH_DIGITS = {x for x in BASE_20_BORDER_SET if x[0] == 'X'}
-        EAST_DIGITS = {x for x in BASE_20_BORDER_SET if x[1] == 'X'}
-        SOUTH_DIGITS = {x for x in BASE_20_BORDER_SET if x[0] == '2'}
-        WEST_DIGITS = {x for x in BASE_20_BORDER_SET if x[1] == '2'}
-        memoized_digit_dict = {
-            "N1": NORTH_DIGITS,
-            "E1": EAST_DIGITS,
-            "S1": SOUTH_DIGITS,
-            "W1": WEST_DIGITS,
-        }
-
-
         base_set = memoized_digit_dict.get(f"{eight_point_direction}{iterations_needed}")
         if not base_set:
             quickest_i = 0
